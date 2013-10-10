@@ -16,6 +16,7 @@ History
 -------
 
 Idea conceived at #spelbar ([Twitter](https://twitter.com/search?q=%23spelbar),
+[Tumblr](http://spelbar.tumblr.com/),
 [Google+](https://plus.google.com/communities/113740453792529383063)) where we meet every wednesday to
 combine beer with table top games.
 
