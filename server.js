@@ -21,7 +21,7 @@ if (argv.h) {
     process.exit();
 }
 
-var fileServer = new static.Server('public');
+var fileServer = new static.Server(fs.existsSync('public/index.html') ? 'public' : 'fallback');
 
 app.listen(argv.p);
 
