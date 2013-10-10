@@ -1,0 +1,49 @@
+---
+title: Player
+---
+<div data-role="page" id="login" data-dom-cache="true" data-theme="b">
+    <div data-role="header" data-theme="b">
+        <h1>Player Login</h1>
+    </div> <!-- header -->
+    <div date-role="content">
+        <label for="name">Player name:</label>
+        <input type="text" data-clear-btn="true" name="name" id="name" value="">
+
+        <p>
+          <a href="#wait" id="login-btn" data-role="button" data-icon="check" data-theme="b">Let me in!</a>
+        </p>
+    </div> <!-- content -->
+</div>
+
+<div data-role="page" id="wait" data-dom-cache="true" data-theme="b">
+    <div data-role="header" data-theme="b">
+        <a href="#" data-icon="star" class="ui-btn-right awesome-points">0</a>
+        <h1>Waiting for next round</h1>
+    </div> <!-- header -->
+    <div date-role="content">
+        <ul data-role="listview" data-inset="true" data-theme="c" id="wait-cards">
+        </ul>
+    </div> <!-- content -->
+</div>
+
+<div data-role="page" id="play" data-dom-cache="true" data-theme="b">
+    <div data-role="header" data-theme="b">
+        <a href="#" data-icon="star" class="ui-btn-right awesome-points">0</a>
+        <h1>Play</h1>
+    </div> <!-- header -->
+    <div date-role="content">
+        <div id="black_card" data-theme="a" class="ui-corner-all ui-content ui-bar-a ui-shadow black-card"></div>
+
+        <fieldset data-role="controlgroup" id="white_cards">
+          <select name="select-white-1" id="select-white-1" data-theme="c"></select>
+          <select name="select-white-2" id="select-white-2" data-theme="c"></select>
+          <select name="select-white-3" id="select-white-3" data-theme="c"></select>
+        </fieldset>
+    </div> <!-- content -->
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<!-- build:js(app) scripts/player.js -->
+<script src="scripts/player.js"></script>
+<!-- endbuild -->

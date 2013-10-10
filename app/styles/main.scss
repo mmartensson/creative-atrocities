@@ -1,0 +1,32 @@
+.browsehappy {
+    margin: 0.2em 0;
+    background: #ccc;
+    color: #000;
+    padding: 0.2em 0;
+}
+
+#qr {
+    margin:0px auto;
+}
+
+#qr-cleartext {
+    display: none;
+    text-align: center;
+    color: #999;
+}
+
+#qr-cleartext a {
+    color: #ff9818;
+    text-decoration: none;
+}
+
+.ready {
+    display: inline-block;
+    background-color: green;
+}
+
+.black-card {
+    max-width: 10em;
+    min-height: 14em;
+    margin: 1em auto;
+}

@@ -1,0 +1,60 @@
+{
+  "name": "creative-atrocities",
+  "version": "0.1.0",
+  "description": "Remix of Cards Against Humanity which uses smartphones to hold card hands.",
+  "homepage": "https://github.com/mmartensson/creative-atrocities",
+  "author": {
+    "name": "Markus Mårtensson",
+    "email": "markus.martensson@gmail.com"
+  },
+  "keywords": [
+    "game",
+    "cards",
+    "http",
+    "server",
+    "mobile"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mmartensson/creative-atrocities.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mmartensson/creative-atrocities/issues"
+  },
+  "license": "MIT",
+  "scripts": {
+    "start": "node server.js",
+    "predeploy": "node_modules/.bin/bower install && node_modules/.bin/grunt"
+  },
+  "dependencies": {
+    "optimist": "~0.6.0",
+    "node-static": "~0.7.1",
+    "socket.io": "0.9.16"
+  },
+  "devDependencies": {
+    "bower": "~1.2.7",
+    "grunt": "~0.4.1",
+    "grunt-cli": "~0.1.9",
+    "grunt-contrib-copy": "~0.4.1",
+    "grunt-contrib-concat": "~0.3.0",
+    "grunt-contrib-uglify": "~0.2.0",
+    "grunt-contrib-compass": "~0.5.0",
+    "grunt-contrib-jshint": "~0.6.3",
+    "grunt-contrib-cssmin": "~0.6.0",
+    "grunt-contrib-clean": "~0.5.0",
+    "grunt-contrib-htmlmin": "~0.1.3",
+    "grunt-contrib-imagemin": "~0.2.0",
+    "grunt-contrib-watch": "~0.5.2",
+    "grunt-rev": "~0.1.0",
+    "grunt-autoprefixer": "~0.2.0",
+    "grunt-usemin": "~0.1.10",
+    "grunt-svgmin": "~0.2.0",
+    "grunt-concurrent": "~0.3.0",
+    "load-grunt-tasks": "~0.1.0",
+    "time-grunt": "~0.1.1",
+    "assemble": "~0.4.7"
+  },
+  "engines": {
+    "node": ">=0.8.0"
+  }
+}

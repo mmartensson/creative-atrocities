@@ -1,0 +1,52 @@
+---
+title: Controller
+---
+<div data-role="page" id="setup" data-dom-cache="true" data-theme="b">
+    <div data-role="header" data-theme="b">
+        <h1>Controller Setup</h1>
+    </div> <!-- header -->
+    <div date-role="content">
+       <div id="qr"></div>
+       <p id="qr-cleartext"></p>
+
+       <table data-role="table" data-mode="table" id="players" class="ui-body-b ui-shadow table-stripe ui-responsive">
+         <thead>
+           <tr class="ui-bar-b">
+             <th>Player</th>
+           </tr>
+         </thead>
+         <tbody>
+         </tbody>
+       </table>
+
+       <p>
+         <a href="#scoreboard" data-role="button" data-icon="check" data-theme="b" data-transition="flip" id="start-btn">All players are in!</a>
+       </p>
+    </div> <!-- content -->
+</div>
+
+<div data-role="page" id="scoreboard" data-dom-cache="true" data-theme="b">
+    <div data-role="header" data-theme="b">
+        <h1>Scoreboard</h1>
+    </div> <!-- header -->
+    <div date-role="content">
+       <table data-role="table" data-mode="table" id="scoreboard" class="ui-body-b ui-shadow table-stripe ui-responsive">
+         <thead>
+           <tr class="ui-bar-b">
+             <th>Player</th>
+             <th>Score</th>
+           </tr>
+         </thead>
+         <tbody>
+           <tr> <td><span class="ui-icon ui-icon-check ready">&nbsp;</span> Markus</td> <td>12</td> </tr>
+           <tr> <td>Olle</td> <td>8</td> </tr>
+         </tbody>
+       </table>
+    </div> <!-- content -->
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<!-- build:js(app) scripts/controller.js -->
+<script src="scripts/controller.js"></script>
+<!-- endbuild -->
