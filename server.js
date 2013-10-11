@@ -7,17 +7,17 @@ var app = require('http').createServer(handler)
   , cards = require('./lib/creative-atrocities/cards')
   , optimist = require('optimist')
       .usage('Usage: $0 -p [port]')
-	  .boolean('h')
+      .boolean('h')
       .alias('h', 'help')
-	  .describe('h', 'Display this help message.')
-	  .alias('p', 'port')
-	  .default('p', 8080)
-	  .describe('p', 'Port to use.');
+      .describe('h', 'Display this help message.')
+      .alias('p', 'port')
+      .default('p', 8080)
+      .describe('p', 'Port to use.');
 
 var argv = optimist.argv;
 
 if (argv.h) {
-	optimist.showHelp();
+    optimist.showHelp();
     process.exit();
 }
 
@@ -61,13 +61,26 @@ io.sockets.on('connection', function (socket) {
     sets: terseCardSets()
   });
 
-  // Relaying of private messages (to/from controller)
-  socket.on('relay', function(to, ev, data) {
+  // Relaying of private messages from controller to player
+  socket.on('to player', function(to, ev, data) {
     if (io.sockets.sockets[to]) {
         io.sockets.sockets[to].emit(ev, data); 
     } else {
         socket.emit('error', 'Could not relay message to ' + to + '; destination incorrect or terminated.');
     }
+  });
+
+  // Relaying of private messages from player to controller
+  socket.on('to controller', function(ev, data) {
+    socket.get('identity', function (err, identity) {
+      data['__identity'] = identity;
+      var gameId = identity.gameId;
+      if (io.sockets.sockets[gameId]) {
+          io.sockets.sockets[gameId].emit(ev, data); 
+      } else {
+          socket.emit('error', 'Could not relay message to controller; destination incorrect or terminated.');
+      }
+    });
   });
 
   // Controller
@@ -110,14 +123,17 @@ io.sockets.on('connection', function (socket) {
   socket.on('join game', function(data) {
     console.log('Player ' + data.playerName + ' joins game ' + data.gameId);
 
-    socket.set('gameId', data.gameId);
-    socket.set('playerName', data.playerName);
-
-    if (io.sockets.sockets[data.gameId]) {
-        io.sockets.sockets[data.gameId].emit('player joined', 
-            { playerId: socket.id, playerName: data.playerName });
-    } else {
-        socket.emit('error', 'Game identifier ' + data.gameId + ' is incorrect or terminated.');
-    }
+    socket.set('identity', {
+        gameId: data.gameId,
+        playerId: socket.id,
+        playerName: data.playerName 
+      }, function() {
+        if (io.sockets.sockets[data.gameId]) {
+            io.sockets.sockets[data.gameId].emit('player joined', 
+                { playerId: socket.id, playerName: data.playerName });
+        } else {
+            socket.emit('error', 'Game identifier ' + data.gameId + ' is incorrect or terminated.');
+        }
+      });
   });
 });

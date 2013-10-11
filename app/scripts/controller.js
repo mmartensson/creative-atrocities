@@ -63,7 +63,19 @@ $(document).on('ready', function() {
     var blackCards = [];
     var whiteCards = [];
     var gameId;
-    var players = {}; // playerId => { playerName, score }
+    var players = {}; // playerId => { playerName, cards, played, score }
+    var playedCards = [];
+    var activeBlackCard;
+
+    var updateScoreBoard = function() {
+        $('#scoreboard-tbl tbody').remove();
+
+        $.each(players, function (playerId, player) {
+            $('#scoreboard-tbl').append('<tr> <td>' +
+                (player.played ? '<span class="ui-icon ui-icon-check ready">&nbsp;</span>' : '&nbsp;') +
+                '</td><td>' + player.playerName + '</td><td>' + player.score + '</td></tr>');
+        });
+    };
 
     socket.on('welcome', function (data) {
         console.log('Welcome', data);
@@ -88,27 +100,75 @@ $(document).on('ready', function() {
         console.log('Player joined', data);
 
         var cards = whiteCards.splice(-10,10);
-        socket.emit('relay', data.playerId, 'game joined', { cards: cards });
+        socket.emit('to player', data.playerId, 'game joined', { cards: cards });
 
         $('<tr><td>' + data.playerName + '</td></tr>').appendTo('#players > tbody');
 
-        players[data.playerId] = { playerName: data.playerName, score: 0 };
+        players[data.playerId] = { playerName: data.playerName, score: 0, cards: cards };
+        updateScoreBoard();
     });
 
     $('#start-btn').click(function() {
-        var blackCard;
-
         // Not yet supporting black cards that prompt extra white cards to be drawn
         do {
-            blackCard = blackCards.pop();
-        } while (blackCard.draw);
+            activeBlackCard = blackCards.pop();
+        } while (activeBlackCard.draw);
 
-        console.log('Starting new round with black card: ' + blackCard.text);
+        console.log('Starting new round with black card: ' + activeBlackCard.text);
+        playedCards = [];
 
         $.each(players, function (playerId, player) {
+            player.played = false;
             // TODO: Add extra cards here if black card specifies
-            socket.emit('relay', playerId, 'next round', { blackCard: blackCard });
+            socket.emit('to player', playerId, 'next round', { blackCard: activeBlackCard });
             console.log('Sent card information to player ' + player.playerName);
         });
+
+        updateScoreBoard();
+    });
+
+    socket.on('cards played', function (data) {
+        console.log('Cards played', data);
+
+        var pick = activeBlackCard.pick;
+        var playerId = data.__identity.playerId;
+        var player = players[playerId];
+        if (!player) {
+            console.log('ERROR: Cards played by unknown player "' + playerId + '".');
+            return;
+        }
+
+        if (data.cards.length < pick) {
+            // In the event of an unlikely bug
+            socket.emit('to player', playerId, 'error', 'Expected ' + pick + 'cards, received ' + data.cards.length);
+            return;
+        }
+
+        var removed = 0;
+        player.cards = $.grep(player.cards, function(card) {
+            if ($.inArray(card.id, data.cards) === -1) {
+                return true;
+            } else {
+                removed++;
+                return false;
+            }
+        });
+        if (removed < pick) {
+            // In the event of an unlikely bug or a cheating attempt
+            socket.emit('to player', playerId, 'error', 'Card played that was not in the hand of the player.');
+            return;
+        }
+
+        var replacementCards = whiteCards.splice(-pick,pick);
+        // FIXME: Error checking; replacementCards.length < pick is possible here
+        player.cards = player.cards.concat(replacementCards);
+
+        socket.emit('to player', playerId, 'cards approved', { cards: player.cards });
+        
+        player.played = true;
+        playedCards.push(data);
+        updateScoreBoard();
+
+        // FIXME: Check if that was all, in which case the Czar should be prompted to select a winner
     });
 });

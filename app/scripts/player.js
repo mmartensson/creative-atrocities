@@ -9,7 +9,7 @@ function format(text) {
 
 $(document).on('ready', function() {
     var socket = io.connect();
-    var cards = [];
+    var handCards = [];
     var gameId = $.url().param('g');
 
     socket.on('welcome', function (data) {
@@ -23,15 +23,23 @@ $(document).on('ready', function() {
         return false;
     });
 
-    socket.on('game joined', function (data) {
-        console.log('Game joined', data);
-        cards = data.cards;
+	var receiveCardsAndWait = function(data) {
+        handCards = data.cards;
 
         $('#wait-cards li').remove();
-        $.each(cards, function (i, card) {
+        $.each(handCards, function (i, card) {
             $('#wait-cards').append('<li>' + format(card.text) + '</li>');
         });
         $.mobile.changePage('#wait', { transition: 'slideup' });
+
+		$('#wait').on('pageshow', function() {
+		    $('#wait-cards').listview('refresh');
+		});
+	};
+
+    socket.on('game joined', function (data) {
+        console.log('Game joined', data);
+		receiveCardsAndWait(data);
     });
 
     function setWhiteCards(select, count, skip) {
@@ -40,7 +48,7 @@ $(document).on('ready', function() {
         select.append('<option data-placeholder="true" value="">' +
             '- Pick card number ' + count + ' -</option>');
 
-        $.each(cards, function (i, card) {
+        $.each(handCards, function (i, card) {
             if (!skip[card.id]) {
                 select.append('<option value="' + card.id + '">' +
                     card.text + '</option>');
@@ -65,4 +73,23 @@ $(document).on('ready', function() {
 
         $.mobile.changePage('#play', { transition: 'flip' });
     });
+
+    $('#play-cards-btn').click(function() {
+		var cards = [];
+		for (var i=1; i<=3; i++) {
+			if ($('#select-white-'+i).prop('disabled')) {
+			    break;
+			}
+            var card = $('#select-white-'+i).val();
+			cards.push(card);
+		}
+
+        socket.emit('to controller', 'cards played', { cards: cards });
+        return false;
+    });
+
+	socket.on('cards approved', function (data) {
+        console.log('Cards approved', data);
+		receiveCardsAndWait(data);
+	});
 });
