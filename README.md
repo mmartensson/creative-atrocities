@@ -12,6 +12,23 @@ Gameplay
 The actual game is a remix of the popular card game 
 [Cards Against Humanity](http://www.cardsagainsthumanity.com/).
 
+Running Creative Atrocities
+---------------------------
+
+The easiest way is to try out the game is to run along to the
+deployed drone at [Nodejitsu](http://creative-atrocities.jit.su/).
+
+The slightly trickier way:
+
+    $ git clone https://github.com/mmartensson/creative-atrocities.git
+    $ cd creative-atrocities
+    $ npm install
+    $ ./node_modules/.bin/bower install
+    $ ./node_modules/.bin/grunt
+    $ node server.js
+    
+The `server.js` defaults to using port 8080, but that can be changed using the `--port` argument.
+
 History
 -------
 
