@@ -36,8 +36,9 @@
     margin: 1em;
     float: left;
 }
-.candidate div:first-child {
+.candidate div {
     padding-bottom: 2em;
+	min-height: 6em;
 }
 .candidate div:not(:first-child) {
     margin-top: -1em;
