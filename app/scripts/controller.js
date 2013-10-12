@@ -51,7 +51,9 @@ function displayLoginURL(login) {
         // 4: image box
         mode: 2,
 
-        label: 'Login',
+        msize: 6,
+
+        label: 'Creative Atrocities',
         fontname: 'Helvetica Neue,Roboto,sans',
         fontcolor: '#FF9818',
     });
