@@ -12,6 +12,16 @@ $(document).on('ready', function() {
     var handCards = [];
     var gameId = $.url().param('g');
 
+    // LOGIN
+    // (Player name prompt is shown)
+
+    $('#name').focus().tap().click().keypress(function (ev) {
+        var keycode = (ev.keyCode ? ev.keyCode : ev.which);
+        if (0+keycode === 13) {
+            $('#login-btn').trigger('click');
+        }
+    });
+
     socket.on('welcome', function (data) {
         console.log('Welcome', data);
     });
@@ -22,6 +32,9 @@ $(document).on('ready', function() {
         socket.emit('join game', { playerName: playerName, gameId: gameId });
         return false;
     });
+
+    // INITIAL WAIT
+    // (Dealt white cards are shown)
 
 	var receiveCardsAndWait = function(data) {
         handCards = data.cards;
@@ -41,6 +54,9 @@ $(document).on('ready', function() {
         console.log('Game joined', data);
 		receiveCardsAndWait(data);
     });
+
+    // ROUND STARTS
+    // (Black card shown, user selects white cards)
 
     function setWhiteCards(select, count, skip) {
         $('option', select).remove();
@@ -87,6 +103,9 @@ $(document).on('ready', function() {
         socket.emit('to controller', 'cards played', { cards: cards });
         return false;
     });
+
+    // CARDS PLAYED
+    // (Looping back to wait)
 
 	socket.on('cards approved', function (data) {
         console.log('Cards approved', data);
