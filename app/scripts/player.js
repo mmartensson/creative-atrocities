@@ -2,11 +2,6 @@
 
 /*global io:false */
 
-function format(text) {
-    text = text.replace('&reg;', '®');
-    return text;
-}
-
 $(document).on('ready', function() {
     var socket = io.connect();
     var handCards = [];
@@ -41,7 +36,7 @@ $(document).on('ready', function() {
 
         $('#wait-cards li').remove();
         $.each(handCards, function (i, card) {
-            $('#wait-cards').append('<li>' + format(card.text) + '</li>');
+            $('#wait-cards').append('<li>' + card.text + '</li>');
         });
         $.mobile.changePage('#wait', { transition: 'slideup' });
 
@@ -85,7 +80,7 @@ $(document).on('ready', function() {
             setWhiteCards($('#select-white-' + i), i, {});
         }
 
-        $('#black_card').text(format(data.blackCard.text));
+        $('#black_card').html(data.blackCard.text);
 
         $.mobile.changePage('#play', { transition: 'flip' });
     });
