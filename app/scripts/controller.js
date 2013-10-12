@@ -144,16 +144,16 @@ $(document).on('ready', function() {
             return;
         }
 
-        var removed = 0;
+        var removedCards = [];
         player.cards = $.grep(player.cards, function(card) {
             if ($.inArray(card.id, data.cards) === -1) {
                 return true;
             } else {
-                removed++;
+                removedCards.push(card);
                 return false;
             }
         });
-        if (removed < pick) {
+        if (removedCards.length < pick) {
             // In the event of an unlikely bug or a cheating attempt
             socket.emit('to player', playerId, 'error', 'Card played that was not in the hand of the player.');
             return;
@@ -166,9 +166,30 @@ $(document).on('ready', function() {
         socket.emit('to player', playerId, 'cards approved', { cards: player.cards });
         
         player.played = true;
+        data.cards = removedCards;
         playedCards.push(data);
         updateScoreBoard();
 
-        // FIXME: Check if that was all, in which case the Czar should be prompted to select a winner
+        var remainingPlayers = $.grep(players, function(player) {
+            return !player.played;
+        });
+
+        if (remainingPlayers.length === 0) {
+            // FIXME: Submit to Czar
+            $('#candidates-container').empty();
+            $.mobile.changePage('#candidates', { transition: 'flip' });
+        }
+    });
+
+    $('#candidates').on('pageshow', function() {
+        $.each(playedCards, function(i, played) {
+            console.log('Candidate', played);
+
+            var cards = ['<div data-theme="a" class="ui-corner-all ui-content ui-bar-a ui-shadow">' + activeBlackCard.text + '</div>'];
+            $.each(played.cards, function(j, card) {
+                cards.push('<div data-theme="c" class="ui-corner-all ui-content ui-bar-c ui-shadow">' + card.text + '</div>');
+            });
+            $('#candidates-container').append('<div class="candidate">' + cards.join('') + '</div>');
+        });
     });
 });

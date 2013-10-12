@@ -30,3 +30,15 @@
     min-height: 14em;
     margin: 1em auto;
 }
+
+.candidate {
+    max-width: 10em;
+    margin: 1em;
+    float: left;
+}
+.candidate div:first-child {
+    padding-bottom: 2em;
+}
+.candidate div:not(:first-child) {
+    margin-top: -1em;
+}
