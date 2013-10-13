@@ -54,8 +54,6 @@ $(document).on('ready', function() {
     // (Black card shown, user selects white cards)
 
     function setWhiteCards(select, count, skip) {
-        $('option', select).remove();
-
         select.append('<option data-placeholder="true" value="">' +
             '- Pick card number ' + count + ' -</option>');
 
@@ -66,12 +64,14 @@ $(document).on('ready', function() {
             }
         });
 
-        select.selectmenu();
+        select.selectmenu().val('').selectmenu('refresh');
     }
 
     socket.on('next round', function (data) {
         console.log('Next round', data);
         var pick = data.blackCard.pick;
+
+        $('#play option').remove();
 
         $('#select-white-2').prop('disabled', pick <= 1 ? 'true' : '');
         $('#select-white-3').prop('disabled', pick <= 2  ? 'true' : '');
