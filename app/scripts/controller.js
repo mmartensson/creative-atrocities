@@ -117,6 +117,8 @@ $(document).on('ready', function() {
     });
 
     var startNextRound = function() {
+        $.mobile.changePage('#scoreboard', { transition: 'flip' });
+
         // Not yet supporting black cards that prompt extra white cards to be drawn
         do {
             activeBlackCard = blackCards.pop();
