@@ -31,7 +31,7 @@ $(document).on('ready', function() {
     // INITIAL WAIT
     // (Dealt white cards are shown)
 
-	var receiveCardsAndWait = function(data) {
+    var receiveCardsAndWait = function(data) {
         handCards = data.cards;
 
         $('#wait-cards li').remove();
@@ -40,14 +40,14 @@ $(document).on('ready', function() {
         });
         $.mobile.changePage('#wait', { transition: 'slideup' });
 
-		$('#wait').on('pageshow', function() {
-		    $('#wait-cards').listview('refresh');
-		});
-	};
+        $('#wait').on('pageshow', function() {
+            $('#wait-cards').listview('refresh');
+        });
+    };
 
     socket.on('game joined', function (data) {
         console.log('Game joined', data);
-		receiveCardsAndWait(data);
+        receiveCardsAndWait(data);
     });
 
     // ROUND STARTS
@@ -86,24 +86,63 @@ $(document).on('ready', function() {
     });
 
     $('#play-cards-btn').click(function() {
-		var cards = [];
-		for (var i=1; i<=3; i++) {
-			if ($('#select-white-'+i).prop('disabled')) {
-			    break;
-			}
+        var cards = [];
+        for (var i=1; i<=3; i++) {
+            if ($('#select-white-'+i).prop('disabled')) {
+                break;
+            }
             var card = $('#select-white-'+i).val();
-			cards.push(card);
-		}
+            cards.push(card);
+        }
 
         socket.emit('to controller', 'cards played', { cards: cards });
         return false;
     });
 
+    // ROUND STARTS (CZAR)
+    // (Black card shown, player waits)
+
+    socket.on('next czar', function (data) {
+        console.log('Next czar', data);
+        $('#czar_black_card').html(data.blackCard.text);
+
+        $.mobile.changePage('#czar', { transition: 'slideup' });
+    });
+
+
     // CARDS PLAYED
     // (Looping back to wait)
 
-	socket.on('cards approved', function (data) {
+    socket.on('cards approved', function (data) {
         console.log('Cards approved', data);
-		receiveCardsAndWait(data);
-	});
+        receiveCardsAndWait(data);
+    });
+
+
+    // CARDS PLAYED (CZAR)
+    // (White card sets received, player prompted to pick a winning set)
+    socket.on('decision time', function (data) {
+        console.log('Cards played', data);
+        $('#candidates').empty();
+        for (var i=0; i<data.cards.length; i++) {
+            var set = data.cards[i];
+            var list = [];
+            for (var j=0; j<set.length; j++) {
+                var text = set[j];
+                list.push('<li>' + text + '</li>');
+            }
+            $('#candidates').append('<li><a href="#" data-index="' + i + '"><ul>' + list.join('') + '</ul></a></li>');
+        }
+        $('#candidates').listview('refresh');
+        $('#candidates li a').click(function() {
+            var index = $(this).jqmData('index');
+            socket.emit('to controller', 'winner selected', index);
+        });
+    });
+
+    // OTHER STUFF
+    socket.on('score updated', function (score) {
+        console.log('Score updated', score);
+        $('.awesome-points .ui-btn-inner .ui-btn-text').text(score);
+    });
 });

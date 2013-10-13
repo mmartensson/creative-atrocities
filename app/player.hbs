@@ -46,6 +46,18 @@ title: Player
     </div> <!-- content -->
 </div>
 
+<div data-role="page" id="czar" data-dom-cache="true" data-theme="b">
+    <div data-role="header" data-theme="b">
+        <a href="#" data-icon="star" class="ui-btn-right awesome-points">0</a>
+        <h1>Czar</h1>
+    </div> <!-- header -->
+    <div date-role="content">
+        <div id="czar_black_card" data-theme="a" class="ui-corner-all ui-content ui-bar-a ui-shadow black-card"></div>
+        <ul data-role="listview" data-theme="c" id="candidates">
+        </ul>
+    </div> <!-- content -->
+</div>
+
 <script src="/socket.io/socket.io.js"></script>
 
 <!-- build:js(app) scripts/player.js -->

@@ -66,17 +66,22 @@ $(document).on('ready', function() {
     var whiteCards = [];
     var gameId;
     var players = {}; // playerId => { playerName, cards, played, score }
+    var playerOrder = []; // playerId keys into players
     var playedCards = [];
     var activeBlackCard;
+    var currentCzar = -1; // index into playerOrder
 
     var updateScoreBoard = function() {
         $('#scoreboard-tbl tbody').remove();
 
-        $.each(players, function (playerId, player) {
+        for (var i=0; i<playerOrder.length; i++) {
+            var playerId = playerOrder[i];
+            var player = players[playerId];
+
             $('#scoreboard-tbl').append('<tr> <td>' +
                 (player.played ? '<span class="ui-icon ui-icon-check ready">&nbsp;</span>' : '&nbsp;') +
                 '</td><td>' + player.playerName + '</td><td>' + player.score + '</td></tr>');
-        });
+        }
     };
 
     socket.on('welcome', function (data) {
@@ -107,10 +112,11 @@ $(document).on('ready', function() {
         $('<tr><td>' + data.playerName + '</td></tr>').appendTo('#players > tbody');
 
         players[data.playerId] = { playerName: data.playerName, score: 0, cards: cards };
+        playerOrder.push(data.playerId);
         updateScoreBoard();
     });
 
-    $('#start-btn').click(function() {
+    var startNextRound = function() {
         // Not yet supporting black cards that prompt extra white cards to be drawn
         do {
             activeBlackCard = blackCards.pop();
@@ -119,15 +125,26 @@ $(document).on('ready', function() {
         console.log('Starting new round with black card: ' + activeBlackCard.text);
         playedCards = [];
 
+        if (++currentCzar >= playerOrder.length) {
+            currentCzar = 0;
+        }
+
         $.each(players, function (playerId, player) {
-            player.played = false;
-            // TODO: Add extra cards here if black card specifies
-            socket.emit('to player', playerId, 'next round', { blackCard: activeBlackCard });
-            console.log('Sent card information to player ' + player.playerName);
+            if (playerId === playerOrder[currentCzar]) {
+                socket.emit('to player', playerId, 'next czar', { blackCard: activeBlackCard });
+                console.log('Sent card information to player ' + player.playerName + ' (new czar)');
+                player.played = true;
+            } else {
+                // TODO: Add extra cards here if black card specifies
+                socket.emit('to player', playerId, 'next round', { blackCard: activeBlackCard });
+                console.log('Sent card information to player ' + player.playerName);
+                player.played = false;
+            }
         });
 
         updateScoreBoard();
-    });
+    };
+    $('#start-btn').click(startNextRound);
 
     socket.on('cards played', function (data) {
         console.log('Cards played', data);
@@ -177,7 +194,16 @@ $(document).on('ready', function() {
         });
 
         if (remainingPlayers.length === 0) {
-            // FIXME: Submit to Czar
+            var anonymizedCards = [];
+            $.each(playedCards, function(i, played) {
+                var set = [];
+                $.each(played.cards, function(j, card) {
+                    set.push(card.text);
+                });
+                anonymizedCards.push(set);
+            });
+            socket.emit('to player', playerOrder[currentCzar], 'decision time', { cards: anonymizedCards });
+
             $('#candidates-container').empty();
             $.mobile.changePage('#candidates', { transition: 'flip' });
         }
@@ -193,5 +219,14 @@ $(document).on('ready', function() {
             });
             $('#candidates-container').append('<div class="candidate">' + cards.join('') + '</div>');
         });
+    });
+
+    socket.on('winner selected', function (index) {
+        console.log('Winner selected', index);
+        var winningSet = playedCards[index];
+        var winningPlayerId = winningSet.__identity.playerId;
+        players[winningPlayerId].score++;
+        socket.emit('to player', winningPlayerId, 'score updated', players[winningPlayerId].score);
+        startNextRound();
     });
 });
