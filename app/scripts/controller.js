@@ -87,8 +87,23 @@ $(document).on('ready', function() {
     socket.on('welcome', function (data) {
         console.log('Welcome', data);
 
-        var sets = [ data.sets[0].id ];
-        socket.emit('create game', { sets: sets });
+        // NOTE: This welcome message may in theory be sent in a disconnect/reconnect scenario
+        $.each(data.decks, function(i, deck) {
+            $('#decks').append('<input type="checkbox" data-deck="' + deck.id + '" id="deck-cb-' + i + '">' +
+                '<label for="deck-cb-' + i + '">' + deck.name + '</label>');
+        });
+        $('#decks').controlgroup().controlgroup('refresh');
+        $('#decks input').checkboxradio().checkboxradio('refresh');
+    });
+
+    $('#create-btn').click(function() {
+        var decks = [];
+        $.each($('#decks input'), function(i, cb) {
+            if ($(cb).is(':checked')) {
+                decks.push($(cb).jqmData('deck'));
+            }
+        });
+        socket.emit('create game', { decks: decks });
     });
 
     socket.on('game created', function (data) {
@@ -98,8 +113,9 @@ $(document).on('ready', function() {
         whiteCards = data.whiteCards;
         gameId = data.gameId;
 
-        var login = document.location;
-        login += 'player.html?g=' + gameId;
+        var u = $.url().attr();
+        var login = u.protocol + '://' + u.host + (0 + u.port === 80 ? '' : (':' + u.port)) + u.directory + 'player.html?g=' + gameId;
+
         displayLoginURL(login);
     });
 

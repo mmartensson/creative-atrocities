@@ -34,14 +34,14 @@ function handler (request, response) {
 var app = http.createServer(handler).listen(argv.p);
 var io = socketio.listen(app);
 
-function terseCardSets() {
-    var sets = cards.cardSets;
+function terseDecks() {
+    var decks = cards.decks;
     var stripped = [];
 
-    for (var id in sets) {
-        if (sets.hasOwnProperty(id)) {
-            var set = sets[id];
-            stripped.push({ id: id, name: set.name, description: set.description });
+    for (var id in decks) {
+        if (decks.hasOwnProperty(id)) {
+            var deck = decks[id];
+            stripped.push({ id: id, name: deck.name });
         }
     }
     return stripped;
@@ -61,7 +61,7 @@ function shuffleArray(ar) {
 io.sockets.on('connection', function (socket) {
     // Generic welcome
     socket.emit('welcome', {
-        sets: terseCardSets()
+        decks: terseDecks()
     });
 
     // Relaying of private messages from controller to player
@@ -93,21 +93,20 @@ io.sockets.on('connection', function (socket) {
         var blackCards = [];
         var whiteCards = [];
 
-        for (var i=0; i<data.sets.length; i++) {
-            var setId = data.sets[i];
-            var set = cards.cardSets[setId];
-            console.log('Using set "' + set.name + '"');
+        for (var i=0; i<data.decks.length; i++) {
+            var deckId = data.decks[i];
+            var deck = cards.decks[deckId];
+            console.log('Using deck "' + deck.name + '"');
 
-
-            for (var bi=0; bi<set.blackCards.length; bi++) {
-                var bcId = set.blackCards[bi];
+            for (var bi=0; bi<deck.blackCards.length; bi++) {
+                var bcId = deck.blackCards[bi];
                 var bc = cards.blackCards[bcId];
                 bc.id = bcId;
                 blackCards.push(bc);
             }
 
-            for (var wi=0; wi<set.whiteCards.length; wi++) {
-                var wcId = set.whiteCards[wi];
+            for (var wi=0; wi<deck.whiteCards.length; wi++) {
+                var wcId = deck.whiteCards[wi];
                 var wc = cards.whiteCards[wcId];
                 wc.id = wcId;
                 whiteCards.push(wc);

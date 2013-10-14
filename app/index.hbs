@@ -6,6 +6,20 @@ title: Controller
         <h1>Controller Setup</h1>
     </div> <!-- header -->
     <div date-role="content">
+       <fieldset data-role="controlgroup" data-theme="d" id="decks">
+       </fieldset>
+
+       <p>
+         <a href="#invite" data-role="button" data-icon="check" data-theme="b" data-transition="flip" id="create-btn">These decks rule!</a>
+       </p>
+    </div> <!-- content -->
+</div>
+
+<div data-role="page" id="invite" data-dom-cache="true" data-theme="b">
+    <div data-role="header" data-theme="b">
+        <h1>Inviting Players</h1>
+    </div> <!-- header -->
+    <div date-role="content">
        <div id="qr"></div>
        <p id="qr-cleartext"></p>
 
