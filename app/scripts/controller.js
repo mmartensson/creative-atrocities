@@ -191,11 +191,14 @@ $(document).on('ready', function() {
         playedCards.push(data);
         updateScoreBoard();
 
-        var remainingPlayers = $.grep(players, function(player) {
-            return !player.played;
+        var remainingPlayers = 0;
+        $.each(players, function(playerId, player) {
+            if (!player.played) {
+                remainingPlayers++;
+            }
         });
 
-        if (remainingPlayers.length === 0) {
+        if (remainingPlayers === 0) {
             var anonymizedCards = [];
             $.each(playedCards, function(i, played) {
                 var set = [];
