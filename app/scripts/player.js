@@ -73,8 +73,8 @@ $(document).on('ready', function() {
 
         $('#play option').remove();
 
-        $('#select-white-2').prop('disabled', pick <= 1 ? 'true' : '');
-        $('#select-white-3').prop('disabled', pick <= 2  ? 'true' : '');
+        $('#select-white-2').selectmenu().selectmenu(pick <= 1 ? 'disable' : 'enable');
+        $('#select-white-3').selectmenu().selectmenu(pick <= 2 ? 'disable' : 'enable');
 
         for (var i=1; i<= pick; i++) {
             setWhiteCards($('#select-white-' + i), i, {});
@@ -105,6 +105,7 @@ $(document).on('ready', function() {
     socket.on('next czar', function (data) {
         console.log('Next czar', data);
         $('#czar_black_card').html(data.blackCard.text);
+        $('#candidates').empty();
 
         $.mobile.changePage('#czar', { transition: 'slideup' });
     });
