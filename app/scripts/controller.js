@@ -12,6 +12,18 @@ var qrSize;
     $('#qr').width(qrSize).height(qrSize);
 })();
 
+// NOTE: An identical method is found in the server; may want client/server shared javascript files
+function shuffleArray(ar) {
+    var res = ar.slice();
+    for (var i = res.length - 1; i >= 0; i--) {
+        var n = Math.floor(Math.random() * i);
+        var t = res[i];
+        res[i] = res[n];
+        res[n] = t;
+    }
+    return res;
+}
+
 function displayLoginURL(login) {
     $('#qr-cleartext')
        .html('Scan barcode or enter <a href="' + login + '">' +
@@ -215,6 +227,8 @@ $(document).on('ready', function() {
         });
 
         if (remainingPlayers === 0) {
+            playedCards = shuffleArray(playedCards);
+
             var anonymizedCards = [];
             $.each(playedCards, function(i, played) {
                 var set = [];
