@@ -2,6 +2,10 @@
 
 /*global io:false */
 
+$(document).on('pagebeforecreate', function() {
+    document.location.hash = '';
+});
+
 var qrSize;
 
 (function() {
@@ -90,9 +94,9 @@ $(document).on('ready', function() {
             var playerId = playerOrder[i];
             var player = players[playerId];
 
-            $('#scoreboard-tbl').append('<tr> <td>' +
+            $('#scoreboard-tbl').append('<tr> <td class="ui-body-c">' +
                 (player.played ? '<span class="ui-icon ui-icon-check ready">&nbsp;</span>' : '&nbsp;') +
-                '</td><td>' + player.playerName + '</td><td>' + player.score + '</td></tr>');
+                '</td><td class="ui-body-c">' + player.playerName + '</td><td class="ui-body-c">' + player.score + '</td></tr>');
         }
     };
 
@@ -137,7 +141,10 @@ $(document).on('ready', function() {
         var cards = whiteCards.splice(-10,10);
         socket.emit('to player', data.playerId, 'game joined', { cards: cards });
 
-        $('<tr><td>' + data.playerName + '</td></tr>').appendTo('#players > tbody');
+        if (playerOrder.length === 0) {
+            $('#players > tbody').empty();
+        }
+        $('<tr><td class="ui-body-c"><span class="ui-icon ui-icon-check ready">&nbsp;</span></td><td class="ui-body-c">' + data.playerName + '</td></tr>').appendTo('#players > tbody');
 
         players[data.playerId] = { playerName: data.playerName, score: 0, cards: cards };
         playerOrder.push(data.playerId);
