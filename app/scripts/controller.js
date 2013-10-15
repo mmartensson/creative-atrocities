@@ -2,10 +2,6 @@
 
 /*global io:false */
 
-$(document).on('pagebeforecreate', function() {
-    document.location.hash = '';
-});
-
 var qrSize;
 
 (function() {

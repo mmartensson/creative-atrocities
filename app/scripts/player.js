@@ -2,10 +2,6 @@
 
 /*global io:false */
 
-$(document).on('pagebeforecreate', function() {
-    document.location.hash = '';
-});
-
 $(document).on('ready', function() {
     var socket = io.connect();
     var handCards = [];
