@@ -83,6 +83,10 @@ $(document).on('ready', function() {
     var activeBlackCard;
     var currentCzar = -1; // index into playerOrder
 
+    socket.on('error', function (error) {
+        console.error('SocketIO issue: ' + error);
+    });
+
     var updateScoreBoard = function() {
         $('#scoreboard-tbl tbody').remove();
 

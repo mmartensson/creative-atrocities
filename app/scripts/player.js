@@ -7,6 +7,10 @@ $(document).on('ready', function() {
     var handCards = [];
     var gameId = $.url().param('g');
 
+    socket.on('error', function (error) {
+        console.error('SocketIO issue: ' + error);
+    });
+
     // LOGIN
     // (Player name prompt is shown)
 
