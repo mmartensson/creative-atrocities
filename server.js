@@ -3,9 +3,11 @@
 'use strict';
 
 var http = require('http')
-    , statik = require('node-static')
+    , connect = require('connect')
+    , cookie = require('cookie')
     , socketio = require('socket.io')
     , fs = require('fs')
+    , colors = require('colors')
     , cards = require('./lib/creative-atrocities/cards')
     , optimist = require('optimist');
 
@@ -23,16 +25,60 @@ if (argv.h) {
     process.exit();
 }
 
-var fileServer = new statik.Server(fs.existsSync('public/index.html') ? 'public' : 'fallback');
+colors.setTheme({
+    info: 'green',
+    warn:  [ 'italic', 'yellow' ],
+    error: [ 'underline', 'red' ]
+});
 
-function handler (request, response) {
-    request.addListener('end', function () {
-        fileServer.serve(request, response);
-    }).resume();
+var webRoot;
+if (fs.existsSync('public/index.html')) {
+    console.log('Creative Atrocities starting'.info);
+    webRoot = 'public';
+} else {
+    console.log('Creative Atrocities is missing static files'.error);
+    webRoot = 'fallback';
 }
 
-var app = http.createServer(handler).listen(argv.p);
-var io = socketio.listen(app);
+var generateId = socketio.Manager.prototype.generateId;
+var secret = generateId();
+var cookieKey = 'atrocities';
+
+var app = connect()
+    .use(connect.logger('dev'))
+    .use(connect.cookieParser())
+    .use(connect.cookieSession({ secret: secret, key: cookieKey }))
+    .use(function (req, res, next) {
+        if (!req.session.sesId) {
+            req.session.sesId = generateId();
+        }
+        next();
+    })
+    .use(connect.static(webRoot));
+
+var server = http.createServer(app).listen(argv.p);
+var io = socketio.listen(server);
+
+io.configure(function (){
+    io.set('authorization', function (hs, callback) {
+        var parsed = cookie.parse(hs.headers.cookie);
+        var unsigned = connect.utils.parseSignedCookies(parsed, secret);
+        var unjsoned = connect.utils.parseJSONCookies(unsigned, secret);
+        var session = unjsoned[cookieKey];
+
+        console.log('Unsigned', unsigned);
+        console.log('Session', session);
+
+        if (session && session.sesId) {
+            hs.sesId = session.sesId;
+            console.log('Authorization successful for session '.info + (hs.sesId).magenta);
+            callback(null, true);
+        } else {
+            console.log('Authorization failure'.warn);
+            callback('Invalid or non-existing session cookie', false);
+        }
+    });
+});
 
 function terseDecks() {
     var decks = cards.decks;
