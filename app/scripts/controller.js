@@ -12,18 +12,6 @@ var qrSize;
     $('#qr').width(qrSize).height(qrSize);
 })();
 
-// NOTE: An identical method is found in the server; may want client/server shared javascript files
-function shuffleArray(ar) {
-    var res = ar.slice();
-    for (var i = res.length - 1; i >= 0; i--) {
-        var n = Math.floor(Math.random() * i);
-        var t = res[i];
-        res[i] = res[n];
-        res[n] = t;
-    }
-    return res;
-}
-
 function displayLoginURL(login) {
     $('#qr-cleartext')
        .html('Scan barcode or enter <a href="' + login + '">' +
@@ -74,14 +62,13 @@ function displayLoginURL(login) {
 $(document).on('ready', function() {
     var socket = io.connect();
 
-    var blackCards = [];
-    var whiteCards = [];
-    var gameId;
+    var game = {};
+
+    // Deprecated globals below
     var players = {}; // playerId => { playerName, cards, played, score }
     var playerOrder = []; // playerId keys into players
     var playedCards = [];
     var activeBlackCard;
-    var currentCzar = -1; // index into playerOrder
 
     socket.on('error', function (error) {
         console.error('SocketIO issue: ' + error);
@@ -90,26 +77,29 @@ $(document).on('ready', function() {
     var updateScoreBoard = function() {
         $('#scoreboard-tbl tbody').remove();
 
-        for (var i=0; i<playerOrder.length; i++) {
-            var playerId = playerOrder[i];
-            var player = players[playerId];
+        for (var p in playerOrder) {
+            var player = players[p];
 
             $('#scoreboard-tbl').append('<tr> <td class="ui-body-c">' +
                 (player.played ? '<span class="ui-icon ui-icon-check ready">&nbsp;</span>' : '&nbsp;') +
-                '</td><td class="ui-body-c">' + player.playerName + '</td><td class="ui-body-c">' + player.score + '</td></tr>');
+                '</td><td class="ui-body-c">' + player.name + '</td><td class="ui-body-c">' +
+                player.points + '</td></tr>');
         }
     };
 
+    // Welcome message which is sent to any connecting client before it has chosen a role
+    // by creating or joining a game. In the case of the controller, it means we should 
+    // perform a setup and request a game to be created.
     socket.on('welcome', function (data) {
         console.log('Welcome', data);
 
-        // NOTE: This welcome message may in theory be sent in a disconnect/reconnect scenario
         $.each(data.decks, function(i, deck) {
             $('#decks').append('<input type="checkbox" data-deck="' + deck.id + '" id="deck-cb-' + i + '">' +
                 '<label for="deck-cb-' + i + '">' + deck.name + '</label>');
         });
         $('#decks').controlgroup().controlgroup('refresh');
         $('#decks input').checkboxradio().checkboxradio('refresh');
+        $.mobile.changePage('#setup', { transition: 'flip' });
     });
 
     $('#create-btn').click(function() {
@@ -122,142 +112,60 @@ $(document).on('ready', function() {
         socket.emit('create game', { decks: decks });
     });
 
-    socket.on('game created', function (data) {
-        console.log('Created', data);
-
-        blackCards = data.blackCards;
-        whiteCards = data.whiteCards;
-        gameId = data.gameId;
+    // Called directly after a game has been created, whenever a player jons, and in a reconnect 
+    // scenario where invites are not yet finished.
+    socket.on('controller state invite', function (data) {
+        console.log('State invite', data);
+        game = data;
 
         var u = $.url().attr();
-        var login = u.protocol + '://' + u.host + (0 + u.port === 80 ? '' : (':' + u.port)) + u.directory + 'player.html?g=' + gameId;
+        var login = u.protocol + '://' + u.host + (0 + u.port === 80 ? '' : (':' + u.port)) + u.directory + 'player.html?g=' + game.gameId;
 
-        displayLoginURL(login);
-    });
-
-    socket.on('player joined', function (data) {
-        console.log('Player joined', data);
-
-        var cards = whiteCards.splice(-10,10);
-        socket.emit('to player', data.playerId, 'game joined', { cards: cards });
-
-        if (playerOrder.length === 0) {
+        // Using the icon span to determine if we are still showing the "No players" message (clearing it)
+        if ($('#players span').length === 0) {
             $('#players > tbody').empty();
         }
-        $('<tr><td class="ui-body-c"><span class="ui-icon ui-icon-check ready">&nbsp;</span></td><td class="ui-body-c">' + data.playerName + '</td></tr>').appendTo('#players > tbody');
 
-        players[data.playerId] = { playerName: data.playerName, score: 0, cards: cards };
-        playerOrder.push(data.playerId);
-        updateScoreBoard();
+        for (var i=$('#players > tbody > tr').length; i<game.playerOrder.length; i++) {
+            var sessionId = game.playerOrder[i];
+            var player = game.players[sessionId];
+            $('<tr><td class="ui-body-c"><span class="ui-icon ui-icon-check ready">&nbsp;</span></td><td class="ui-body-c">' + player.name + '</td></tr>').appendTo('#players > tbody');
+        }
+
+        displayLoginURL(login);
+        $.mobile.changePage('#invite', { transition: 'flip' });
     });
 
-    var startNextRound = function() {
+    $('#start-btn').click(function() {
+        socket.emit('start game');
+    });
+
+    socket.on('controller state play', function(data) {
+        console.log('State play', data);
+        game = data;
+
+        updateScoreBoard();
         $.mobile.changePage('#scoreboard', { transition: 'flip' });
+    });
 
-        // Not yet supporting black cards that prompt extra white cards to be drawn
-        do {
-            activeBlackCard = blackCards.pop();
-        } while (activeBlackCard.draw);
+    socket.on('controller state decision', function (data) {
+        console.log('State decision', data);
+        game = data;
 
-        console.log('Starting new round with black card: ' + activeBlackCard.text);
-        playedCards = [];
-
-        if (++currentCzar >= playerOrder.length) {
-            currentCzar = 0;
-        }
-
-        $.each(players, function (playerId, player) {
-            if (playerId === playerOrder[currentCzar]) {
-                socket.emit('to player', playerId, 'next czar', { blackCard: activeBlackCard });
-                console.log('Sent card information to player ' + player.playerName + ' (new czar)');
-                player.played = true;
-            } else {
-                // TODO: Add extra cards here if black card specifies
-                socket.emit('to player', playerId, 'next round', { blackCard: activeBlackCard });
-                console.log('Sent card information to player ' + player.playerName);
-                player.played = false;
-            }
-        });
-
-        updateScoreBoard();
-    };
-    $('#start-btn').click(startNextRound);
-
-    socket.on('cards played', function (data) {
-        console.log('Cards played', data);
-
-        var pick = activeBlackCard.pick;
-        var playerId = data.__identity.playerId;
-        var player = players[playerId];
-        if (!player) {
-            console.log('ERROR: Cards played by unknown player "' + playerId + '".');
-            return;
-        }
-
-        if (data.cards.length < pick) {
-            // In the event of an unlikely bug
-            socket.emit('to player', playerId, 'error', 'Expected ' + pick + 'cards, received ' + data.cards.length);
-            return;
-        }
-
-        var removedCards = [];
-        player.cards = $.grep(player.cards, function(card) {
-            if ($.inArray(card.id, data.cards) === -1) {
-                return true;
-            } else {
-                removedCards.push(card);
-                return false;
-            }
-        });
-        if (removedCards.length < pick) {
-            // In the event of an unlikely bug or a cheating attempt
-            socket.emit('to player', playerId, 'error', 'Card played that was not in the hand of the player.');
-            return;
-        }
-
-        var replacementCards = whiteCards.splice(-pick,pick);
-        // FIXME: Error checking; replacementCards.length < pick is possible here
-        player.cards = player.cards.concat(replacementCards);
-
-        socket.emit('to player', playerId, 'cards approved', { cards: player.cards });
-        
-        player.played = true;
-        data.cards = removedCards;
-        playedCards.push(data);
-        updateScoreBoard();
-
-        var remainingPlayers = 0;
-        $.each(players, function(playerId, player) {
-            if (!player.played) {
-                remainingPlayers++;
-            }
-        });
-
-        if (remainingPlayers === 0) {
-            playedCards = shuffleArray(playedCards);
-
-            var anonymizedCards = [];
-            $.each(playedCards, function(i, played) {
-                var set = [];
-                $.each(played.cards, function(j, card) {
-                    set.push(card.text);
-                });
-                anonymizedCards.push(set);
-            });
-            socket.emit('to player', playerOrder[currentCzar], 'decision time', { cards: anonymizedCards });
-
-            $('#candidates-container').empty();
-            $.mobile.changePage('#candidates', { transition: 'flip' });
-        }
+        $('#candidates-container').empty();
+        $.mobile.changePage('#candidates', { transition: 'flip' });
     });
 
     $('#candidates').on('pageshow', function() {
-        $.each(playedCards, function(i, played) {
+        var candidates = game.players[game.playerOrder[game.czarIndex]].candidates;
+        $.each(candidates, function(i, played) {
             console.log('Candidate', played);
 
-            var cards = ['<div data-theme="a" class="ui-corner-all ui-content ui-bar-a ui-shadow">' + activeBlackCard.text + '</div>'];
+            var cards = ['<div data-theme="a" class="ui-corner-all ui-content ui-bar-a ui-shadow">' +
+                activeBlackCard.text + '</div>'];
             $.each(played.cards, function(j, card) {
-                cards.push('<div data-theme="c" class="ui-corner-all ui-content ui-bar-c ui-shadow">' + card.text + '</div>');
+                cards.push('<div data-theme="c" class="ui-corner-all ui-content ui-bar-c ui-shadow">' +
+                    card.text + '</div>');
             });
             $('#candidates-container').append('<div class="candidate">' + cards.join('') + '</div>');
         });
@@ -269,6 +177,6 @@ $(document).on('ready', function() {
         var winningPlayerId = winningSet.__identity.playerId;
         players[winningPlayerId].score++;
         socket.emit('to player', winningPlayerId, 'score updated', players[winningPlayerId].score);
-        startNextRound();
+        //startNextRound();
     });
 });

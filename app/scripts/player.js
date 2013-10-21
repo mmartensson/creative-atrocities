@@ -4,8 +4,8 @@
 
 $(document).on('ready', function() {
     var socket = io.connect();
-    var handCards = [];
     var gameId = $.url().param('g');
+    var player;
 
     socket.on('error', function (error) {
         console.error('SocketIO issue: ' + error);
@@ -23,6 +23,7 @@ $(document).on('ready', function() {
 
     socket.on('welcome', function (data) {
         console.log('Welcome', data);
+        $.mobile.changePage('#login', { transition: 'flip' });
     });
 
     $('#login-btn').click(function() {
@@ -35,23 +36,19 @@ $(document).on('ready', function() {
     // INITIAL WAIT
     // (Dealt white cards are shown)
 
-    var receiveCardsAndWait = function(data) {
-        handCards = data.cards;
+    socket.on('player state wait', function (data) {
+        console.log('State wait', data);
+        player = data;
 
         $('#wait-cards li').remove();
-        $.each(handCards, function (i, card) {
+        $.each(player.whiteCards, function (i, card) {
             $('#wait-cards').append('<li>' + card.text + '</li>');
         });
+
         $.mobile.changePage('#wait', { transition: 'slideup' });
-
-        $('#wait').on('pageshow', function() {
-            $('#wait-cards').listview('refresh');
-        });
-    };
-
-    socket.on('game joined', function (data) {
-        console.log('Game joined', data);
-        receiveCardsAndWait(data);
+    });
+    $('#wait').on('pageshow', function() {
+        $('#wait-cards').listview('refresh');
     });
 
     // ROUND STARTS
@@ -61,7 +58,7 @@ $(document).on('ready', function() {
         select.append('<option data-placeholder="true" value="">' +
             '- Pick card number ' + count + ' -</option>');
 
-        $.each(handCards, function (i, card) {
+        $.each(player.whiteCards, function (i, card) {
             if (!skip[card.id]) {
                 select.append('<option value="' + card.id + '">' +
                     card.text + '</option>');
@@ -71,9 +68,11 @@ $(document).on('ready', function() {
         select.selectmenu().val('').selectmenu('refresh');
     }
 
-    socket.on('next round', function (data) {
-        console.log('Next round', data);
-        var pick = data.blackCard.pick;
+    socket.on('player state play', function (data) {
+        console.log('State play', data);
+        player = data;
+
+        var pick = +player.blackCard.pick;
 
         $('#play option').remove();
 
@@ -84,9 +83,9 @@ $(document).on('ready', function() {
             setWhiteCards($('#select-white-' + i), i, {});
         }
 
-        $('#black_card').html(data.blackCard.text);
+        $('#black_card').html(player.blackCard.text);
 
-        $.mobile.changePage('#play', { transition: 'flip' });
+        $.mobile.changePage('#play', { transition: 'slideup' });
     });
 
     $('#play-cards-btn').click(function() {
@@ -99,7 +98,7 @@ $(document).on('ready', function() {
             cards.push(card);
         }
 
-        socket.emit('to controller', 'cards played', { cards: cards });
+        socket.emit('play cards', cards);
         return false;
     });
 
@@ -114,18 +113,11 @@ $(document).on('ready', function() {
         $.mobile.changePage('#czar', { transition: 'slideup' });
     });
 
-
     // CARDS PLAYED
     // (Looping back to wait)
 
-    socket.on('cards approved', function (data) {
-        console.log('Cards approved', data);
-        receiveCardsAndWait(data);
-    });
-
-
-    // CARDS PLAYED (CZAR)
-    // (White card sets received, player prompted to pick a winning set)
+    // CARDS PLAYED 
+    // (White card sets received, Czar prompted to pick a winning set)
     socket.on('decision time', function (data) {
         console.log('Cards played', data);
         $('#candidates').empty();

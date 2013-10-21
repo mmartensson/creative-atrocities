@@ -9,7 +9,8 @@ var http = require('http')
     , fs = require('fs')
     , colors = require('colors')
     , cards = require('./lib/creative-atrocities/cards')
-    , optimist = require('optimist');
+    , optimist = require('optimist')
+    , clone = require('clone');
 
 var argv = optimist
     .usage('Usage: $0 -p [port]')
@@ -49,8 +50,8 @@ var app = connect()
     .use(connect.cookieParser())
     .use(connect.cookieSession({ secret: secret, key: cookieKey }))
     .use(function (req, res, next) {
-        if (!req.session.sesId) {
-            req.session.sesId = generateId();
+        if (!req.session.sessionId) {
+            req.session.sessionId = generateId();
         }
         next();
     })
@@ -59,6 +60,9 @@ var app = connect()
 var server = http.createServer(app).listen(argv.p);
 var io = socketio.listen(server);
 
+var games = {};
+var sessions = {};
+
 io.configure(function (){
     io.set('authorization', function (hs, callback) {
         var parsed = cookie.parse(hs.headers.cookie);
@@ -66,12 +70,9 @@ io.configure(function (){
         var unjsoned = connect.utils.parseJSONCookies(unsigned, secret);
         var session = unjsoned[cookieKey];
 
-        console.log('Unsigned', unsigned);
-        console.log('Session', session);
-
-        if (session && session.sesId) {
-            hs.sesId = session.sesId;
-            console.log('Authorization successful for session '.info + (hs.sesId).magenta);
+        if (session && session.sessionId) {
+            hs.sessionId = session.sessionId;
+            console.log('Authorization successful for session '.info + (hs.sessionId).magenta);
             callback(null, true);
         } else {
             console.log('Authorization failure'.warn);
@@ -84,12 +85,10 @@ function terseDecks() {
     var decks = cards.decks;
     var stripped = [];
 
-    for (var id in decks) {
-        if (decks.hasOwnProperty(id)) {
-            var deck = decks[id];
-            stripped.push({ id: id, name: deck.name });
-        }
-    }
+    Object.keys(decks).forEach(function(id) {
+        var deck = decks[id];
+        stripped.push({ id: id, name: deck.name });
+    });
 
     stripped.sort(function(a,b) {
         if (a.name < b.name) {
@@ -114,37 +113,72 @@ function shuffleArray(ar) {
     return res;
 }
 
+function pushControllerState(gameId) {
+    var game = games[gameId];
+    var socketId = sessions[game.sessionId].socketId;
+    var socket = io.sockets.sockets[socketId];
+    var controller = clone(game);
+    // Skipping cards since they are of no use to the 
+    // controller and would consume a lot of bandwidth.
+    delete controller.blackCards;
+    delete controller.whiteCards;
+
+    controller.playerOrder.forEach(function(p) {
+        var player = controller.players[p];
+
+        delete player.whiteCards;
+        delete player.blackCard;
+        delete player.playedCards;
+    });
+
+    if (socket) {
+        socket.emit('controller state '+controller.state, controller);
+    } else {
+        console.log('Currently no controller socket available for gameId: '.warn + gameId.magenta);
+    }
+}
+
+function pushPlayerState(gameId, sessionId) {
+    var player = games[gameId].players[sessionId];
+    var socketId = sessions[sessionId].socketId;
+    var socket = io.sockets.sockets[socketId];
+
+    if (socket) {
+        socket.emit('player state '+player.state, player);
+    } else {
+        console.log('Currently no player socket available for gameId: '.warn +
+                gameId.magenta + ', sessionId: '.warn + sessionId.magenta);
+    }
+}
+
 io.sockets.on('connection', function (socket) {
-    // Generic welcome
-    socket.emit('welcome', {
-        decks: terseDecks()
-    });
+    var sessionId = socket.handshake.sessionId;
+    var session = sessions[sessionId];
+    var sessionType = session ? session.type : 'new';
 
-    // Relaying of private messages from controller to player
-    socket.on('to player', function(to, ev, data) {
-        if (io.sockets.sockets[to]) {
-            io.sockets.sockets[to].emit(ev, data);
-        } else {
-            socket.emit('error', 'Could not relay message to ' + to + '; destination incorrect or terminated.');
-        }
-    });
+    console.log('Received connection from ' + sessionId + ' (' + sessionType + ')');
 
-    // Relaying of private messages from player to controller
-    socket.on('to controller', function(ev, data) {
-        socket.get('identity', function (err, identity) {
-            data.__identity = identity;
-            var gameId = identity.gameId;
-            if (io.sockets.sockets[gameId]) {
-                io.sockets.sockets[gameId].emit(ev, data);
-            } else {
-                socket.emit('error', 'Could not relay message to controller; destination incorrect or terminated.');
-            }
+    if (sessionType === 'controller') {
+        session.socketId = socket.id;
+        pushControllerState(session.gameId);
+    } else if (sessionType === 'player') {
+        session.socketId = socket.id;
+        pushPlayerState(session.gameId, sessionId);
+    } else {
+        // Generic welcome for new clients (session type unknown)
+        socket.emit('welcome', {
+            decks: terseDecks()
         });
-    });
+    }
 
     // Controller
     socket.on('create game', function(data) {
-        var gameId = socket.id;
+        var gameId = generateId();
+        sessions[sessionId] = {
+            type: 'controller',
+            gameId: gameId,
+            socketId: socket.id
+        };
 
         var blackCards = [];
         var whiteCards = [];
@@ -169,29 +203,149 @@ io.sockets.on('connection', function (socket) {
             }
         }
 
-        console.log('Creating game ' + gameId);
-        socket.emit('game created', {
+        var game = {
             gameId: gameId,
+            sessionId: sessionId,
             blackCards: shuffleArray(blackCards),
-            whiteCards: shuffleArray(whiteCards)
-        });
+            whiteCards: shuffleArray(whiteCards),
+            players: {},
+            playerOrder: [],
+            czarIndex: -1,
+            state: 'invite'
+        };
+        games[gameId] = game;
+
+        console.log('Creating game ' + gameId);
+        pushControllerState(gameId);
     });
+
+    var startRound = function() {
+        var gameId = sessions[sessionId].gameId;
+        var game = games[gameId];
+
+        // Not yet supporting black cards that prompt extra white cards to be drawn
+        do {
+            game.activeBlackCard = game.blackCards.pop();
+        } while (game.activeBlackCard.draw);
+
+        // Picking the next czar
+        if (++game.czarIndex >= game.playerOrder.length) {
+            game.czarIndex = 0;
+        }
+ 
+        var czarSessionId = game.playerOrder[game.czarIndex];
+        var czarPlayer = game.players[czarSessionId];
+
+        console.log(('['+gameId+']').cyan + ' Starting new round with czar ' +
+            czarPlayer.name + ' and black card "' +
+            game.activeBlackCard.text + '"');
+ 
+        game.playerOrder.forEach(function(p) {
+            var player = game.players[p];
+            player.blackCard = game.activeBlackCard;
+            delete player.playedCards;
+            delete player.candidates;
+
+            if (p === czarSessionId) {
+                player.state = 'czar wait';
+            } else {
+                player.state = 'play';
+            }
+            pushPlayerState(gameId, p);
+        });
+
+        game.state = 'play';
+        pushControllerState(gameId);
+    };
+    socket.on('start game', startRound);
 
     // Player
     socket.on('join game', function(data) {
-        console.log('Player ' + data.playerName + ' joins game ' + data.gameId);
+        var gameId = data.gameId;
+        console.log('Player ' + data.playerName + ' (' + sessionId + ') joins game ' + gameId);
 
-        socket.set('identity', {
+        sessions[sessionId] = {
+            type: 'player',
             gameId: data.gameId,
-            playerId: socket.id,
-            playerName: data.playerName
-        }, function() {
-            if (io.sockets.sockets[data.gameId]) {
-                io.sockets.sockets[data.gameId].emit('player joined',
-                    { playerId: socket.id, playerName: data.playerName });
+            socketId: socket.id
+        };
+
+        var game = games[gameId];
+        var whiteCards = game.whiteCards.splice(-10,10);
+
+        var player = {
+            name: data.playerName,
+            sessionId: sessionId,
+            whiteCards: whiteCards,
+            state: 'wait',
+            points: 0
+        };
+        game.players[sessionId] = player;
+        game.playerOrder.push(sessionId);
+
+        pushPlayerState(gameId, sessionId);
+        pushControllerState(gameId);
+    });
+
+    socket.on('play cards', function(cards) {
+        var gameId = sessions[sessionId].gameId;
+        var game = games[gameId];
+        var player = game.players[sessionId];
+        var pick = +game.activeBlackCard.pick;
+
+        if (pick !== cards.length) {
+            socket.emit('error', 'Wrong number of cards picked; expected ' + pick +
+                ' but got ' + cards.length);
+            return;
+        }
+
+        var playedCards = [];
+        var keptCards = [];
+        player.whiteCards.forEach(function(card) {
+            if (cards.indexOf(card.id) < 0) {
+                keptCards.push(card);
             } else {
-                socket.emit('error', 'Game identifier ' + data.gameId + ' is incorrect or terminated.');
+                playedCards.push(card);
             }
         });
+
+        if (pick !== playedCards.length) {
+            socket.emit('error', 'Some of the played cards were not in the hand of the player');
+            return;
+        }
+
+        for (var i=0; i<pick; i++) {
+            player.whiteCards.push(game.whiteCards.pop());
+        }
+
+        player.playedCards = playedCards;
+        player.state = 'wait';
+
+        pushPlayerState(gameId, sessionId);
+
+        // Prepare for the Czar decision
+        var remainingPlayers = 0;
+        var candidates = [];
+        game.playerOrder.forEach(function(p) {
+            var state = game.players[p].state;
+            if (state === 'play') {
+                remainingPlayers++;
+            } else if (state === 'wait') {
+                candidates.push({ sessionId: p, cards: game.players[p].playedCards });
+            }
+        });
+
+        // If all cards are played, wake up the Czar 
+        if (remainingPlayers === 0) {
+            game.state = 'decision';
+
+            var czarSessionId = game.playerOrder[game.czarIndex];
+            var czarPlayer = game.players[czarSessionId];
+            czarPlayer.state = 'decision';
+            czarPlayer.candidates = shuffleArray(candidates);
+            pushPlayerState(gameId, czarSessionId);
+        }
+
+        pushControllerState(gameId);
     });
 });
