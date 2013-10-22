@@ -314,6 +314,7 @@ io.sockets.on('connection', function (socket) {
             return;
         }
 
+        player.whiteCards = keptCards;
         for (var i=0; i<pick; i++) {
             player.whiteCards.push(game.whiteCards.pop());
         }
@@ -341,11 +342,29 @@ io.sockets.on('connection', function (socket) {
 
             var czarSessionId = game.playerOrder[game.czarIndex];
             var czarPlayer = game.players[czarSessionId];
-            czarPlayer.state = 'decision';
+            czarPlayer.state = 'czar decision';
             czarPlayer.candidates = shuffleArray(candidates);
             pushPlayerState(gameId, czarSessionId);
         }
 
         pushControllerState(gameId);
+    });
+
+    socket.on('decide winner', function(winningIndex) {
+        var gameId = sessions[sessionId].gameId;
+        var game = games[gameId];
+        var player = game.players[sessionId];
+        if (player.state !== 'czar decision') {
+            socket.emit('error', 'Wrong player state; expected czar decision but got ' +
+                player.state);
+            return;
+        }
+        var candidate = player.candidates[winningIndex];
+        var winner = game.players[candidate.sessionId];
+        winner.points++;
+        console.log(('['+gameId+']').cyan + ' Winner is ' + winner.name.magenta +
+            ', currently at ' + winner.points.magenta + 'points');
+
+        startRound();
     });
 });

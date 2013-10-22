@@ -39,6 +39,7 @@ $(document).on('ready', function() {
     socket.on('player state wait', function (data) {
         console.log('State wait', data);
         player = data;
+        updatePlayerScore();
 
         $('#wait-cards li').remove();
         $.each(player.whiteCards, function (i, card) {
@@ -68,9 +69,14 @@ $(document).on('ready', function() {
         select.selectmenu().val('').selectmenu('refresh');
     }
 
+    function updatePlayerScore() {
+        $('.awesome-points .ui-btn-inner .ui-btn-text').text(player.points);
+    }
+
     socket.on('player state play', function (data) {
         console.log('State play', data);
         player = data;
+        updatePlayerScore();
 
         var pick = +player.blackCard.pick;
 
@@ -105,9 +111,12 @@ $(document).on('ready', function() {
     // ROUND STARTS (CZAR)
     // (Black card shown, player waits)
 
-    socket.on('next czar', function (data) {
-        console.log('Next czar', data);
-        $('#czar_black_card').html(data.blackCard.text);
+    socket.on('player state czar wait', function (data) {
+        console.log('State czar wait', data);
+        player = data;
+        updatePlayerScore();
+
+        $('#czar_black_card').html(player.blackCard.text);
         $('#candidates').empty();
 
         $.mobile.changePage('#czar', { transition: 'slideup' });
@@ -118,14 +127,18 @@ $(document).on('ready', function() {
 
     // CARDS PLAYED 
     // (White card sets received, Czar prompted to pick a winning set)
-    socket.on('decision time', function (data) {
-        console.log('Cards played', data);
+    socket.on('player state czar decision', function (data) {
+        console.log('State czar decision', data);
+        player = data;
+        updatePlayerScore();
+
+        $('#czar_black_card').html(player.blackCard.text);
         $('#candidates').empty();
-        for (var i=0; i<data.cards.length; i++) {
-            var set = data.cards[i];
+        for (var i=0; i<player.candidates.length; i++) {
+            var set = player.candidates[i].cards;
             var list = [];
             for (var j=0; j<set.length; j++) {
-                var text = set[j];
+                var text = set[j].text;
                 list.push('<li>' + text + '</li>');
             }
             $('#candidates').append('<li><a href="#" data-index="' + i + '"><ul>' + list.join('') + '</ul></a></li>');
@@ -133,13 +146,7 @@ $(document).on('ready', function() {
         $('#candidates').listview('refresh');
         $('#candidates li a').click(function() {
             var index = $(this).jqmData('index');
-            socket.emit('to controller', 'winner selected', index);
+            socket.emit('decide winner', index);
         });
-    });
-
-    // OTHER STUFF
-    socket.on('score updated', function (score) {
-        console.log('Score updated', score);
-        $('.awesome-points .ui-btn-inner .ui-btn-text').text(score);
     });
 });
