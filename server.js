@@ -7,10 +7,11 @@ var http = require('http')
     , cookie = require('cookie')
     , socketio = require('socket.io')
     , fs = require('fs')
-    , colors = require('colors')
     , cards = require('./lib/creative-atrocities/cards')
     , optimist = require('optimist')
     , clone = require('clone');
+
+require('./lib/creative-atrocities/logstyle.js');
 
 var argv = optimist
     .usage('Usage: $0 -p [port]')
@@ -26,18 +27,12 @@ if (argv.h) {
     process.exit();
 }
 
-colors.setTheme({
-    info: 'green',
-    warn:  [ 'italic', 'yellow' ],
-    error: [ 'underline', 'red' ]
-});
-
 var webRoot;
 if (fs.existsSync('public/index.html')) {
     console.log('Creative Atrocities starting'.info);
     webRoot = 'public';
 } else {
-    console.log('Creative Atrocities is missing static files'.error);
+    console.log('Creative Atrocities is missing static files'.err);
     webRoot = 'fallback';
 }
 
@@ -72,7 +67,7 @@ io.configure(function (){
 
         if (session && session.sessionId) {
             hs.sessionId = session.sessionId;
-            console.log('Authorization successful for session '.info + (hs.sessionId).magenta);
+            console.log('Authorization successful for session ', hs.sessionId.arg);
             callback(null, true);
         } else {
             console.log('Authorization failure'.warn);
@@ -134,7 +129,7 @@ function pushControllerState(gameId) {
     if (socket) {
         socket.emit('controller state '+controller.state, controller);
     } else {
-        console.log('Currently no controller socket available for gameId: '.warn + gameId.magenta);
+        console.log(gameId.ctx, 'Currently no controller socket available'.warn);
     }
 }
 
@@ -146,8 +141,8 @@ function pushPlayerState(gameId, sessionId) {
     if (socket) {
         socket.emit('player state '+player.state, player);
     } else {
-        console.log('Currently no player socket available for gameId: '.warn +
-                gameId.magenta + ', sessionId: '.warn + sessionId.magenta);
+        console.log(gameId.ctx, 'Currently no player socket available for '.warn,
+                sessionId.arg);
     }
 }
 
@@ -156,7 +151,7 @@ io.sockets.on('connection', function (socket) {
     var session = sessions[sessionId];
     var sessionType = session ? session.type : 'new';
 
-    console.log('Received connection from ' + sessionId + ' (' + sessionType + ')');
+    console.log('Received connection from ' + sessionId.arg + ' (' + sessionType + ')');
 
     if (sessionType === 'controller') {
         session.socketId = socket.id;
@@ -186,7 +181,7 @@ io.sockets.on('connection', function (socket) {
         for (var i=0; i<data.decks.length; i++) {
             var deckId = data.decks[i];
             var deck = cards.decks[deckId];
-            console.log('Using deck "' + deck.name + '"');
+            console.log(gameId.ctx, 'Using deck', deck.name.arg);
 
             for (var bi=0; bi<deck.blackCards.length; bi++) {
                 var bcId = deck.blackCards[bi];
@@ -215,7 +210,7 @@ io.sockets.on('connection', function (socket) {
         };
         games[gameId] = game;
 
-        console.log('Creating game ' + gameId);
+        console.log(gameId.ctx, 'Game created'.info);
         pushControllerState(gameId);
     });
 
@@ -236,9 +231,9 @@ io.sockets.on('connection', function (socket) {
         var czarSessionId = game.playerOrder[game.czarIndex];
         var czarPlayer = game.players[czarSessionId];
 
-        console.log(('['+gameId+']').cyan + ' Starting new round with czar ' +
-            czarPlayer.name + ' and black card "' +
-            game.activeBlackCard.text + '"');
+        console.log(gameId.ctx, 'Starting new round with czar'.info,
+            czarPlayer.name.arg, 'and black card'.info,
+            game.activeBlackCard.text.arg);
  
         game.playerOrder.forEach(function(p) {
             var player = game.players[p];
@@ -262,8 +257,8 @@ io.sockets.on('connection', function (socket) {
     // Player
     socket.on('join game', function(data) {
         var gameId = data.gameId;
-        console.log('Player ' + data.playerName + ' (' + sessionId + ') joins game ' + gameId);
-
+        console.log(gameId.ctx, 'Player'.info, data.playerName.arg, '/', sessionId.arg,
+            'joins the game'.info);
         sessions[sessionId] = {
             type: 'player',
             gameId: data.gameId,
@@ -362,8 +357,8 @@ io.sockets.on('connection', function (socket) {
         var candidate = player.candidates[winningIndex];
         var winner = game.players[candidate.sessionId];
         winner.points++;
-        console.log(('['+gameId+']').cyan + ' Winner is ' + winner.name.magenta +
-            ', currently at ' + winner.points.magenta + 'points');
+        console.log(gameId.ctx, 'Winner is'.info, winner.name.arg,
+            'now at'.info, winner.points.arg, 'points'.info);
 
         startRound();
     });
