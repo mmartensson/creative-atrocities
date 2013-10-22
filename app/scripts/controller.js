@@ -64,12 +64,6 @@ $(document).on('ready', function() {
 
     var game = {};
 
-    // Deprecated globals below
-    var players = {}; // playerId => { playerName, cards, played, score }
-    var playerOrder = []; // playerId keys into players
-    var playedCards = [];
-    var activeBlackCard;
-
     socket.on('error', function (error) {
         console.error('SocketIO issue: ' + error);
     });
@@ -77,14 +71,20 @@ $(document).on('ready', function() {
     var updateScoreBoard = function() {
         $('#scoreboard-tbl tbody').remove();
 
-        for (var p in playerOrder) {
-            var player = players[p];
 
-            $('#scoreboard-tbl').append('<tr> <td class="ui-body-c">' +
-                (player.played ? '<span class="ui-icon ui-icon-check ready">&nbsp;</span>' : '&nbsp;') +
+        $.each(game.playerOrder, function(i, p) {
+            var player = game.players[p];
+            var icon = '&nbsp;';
+            if (player.state === 'wait') {
+                icon = '<span class="ui-icon ui-icon-check ready">&nbsp;</span>';
+            } else if (player.state === 'czar wait') {
+                icon = '<span class="ui-icon ui-icon-star ready">&nbsp;</span>';
+            }
+
+            $('#scoreboard-tbl').append('<tr> <td class="ui-body-c">' + icon +
                 '</td><td class="ui-body-c">' + player.name + '</td><td class="ui-body-c">' +
                 player.points + '</td></tr>');
-        }
+        });
     };
 
     // Welcome message which is sent to any connecting client before it has chosen a role
@@ -159,24 +159,13 @@ $(document).on('ready', function() {
     $('#candidates').on('pageshow', function() {
         var candidates = game.players[game.playerOrder[game.czarIndex]].candidates;
         $.each(candidates, function(i, played) {
-            console.log('Candidate', played);
-
             var cards = ['<div data-theme="a" class="ui-corner-all ui-content ui-bar-a ui-shadow">' +
-                activeBlackCard.text + '</div>'];
+                game.activeBlackCard.text + '</div>'];
             $.each(played.cards, function(j, card) {
                 cards.push('<div data-theme="c" class="ui-corner-all ui-content ui-bar-c ui-shadow">' +
                     card.text + '</div>');
             });
             $('#candidates-container').append('<div class="candidate">' + cards.join('') + '</div>');
         });
-    });
-
-    socket.on('winner selected', function (index) {
-        console.log('Winner selected', index);
-        var winningSet = playedCards[index];
-        var winningPlayerId = winningSet.__identity.playerId;
-        players[winningPlayerId].score++;
-        socket.emit('to player', winningPlayerId, 'score updated', players[winningPlayerId].score);
-        //startNextRound();
     });
 });
