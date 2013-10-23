@@ -16,7 +16,9 @@ Running Creative Atrocities
 ---------------------------
 
 The easiest way is to try out the game is to run along to the
-deployed drone at [Nodejitsu](http://creative-atrocities.jit.su/).
+deployed drone at [Nodejitsu](http://creative-atrocities.jit.su/). The company
+has graciously offered to host us as part of their
+[Open Source Hosting](http://opensource.nodejitsu.com/) initiative.
 
 The slightly trickier way:
 
