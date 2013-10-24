@@ -23,7 +23,7 @@
   },
   "license": "MIT",
   "scripts": {
-    "start": "node server.js",
+    "start": "node server.js --color",
     "predeploy": "node_modules/.bin/bower install && node_modules/.bin/grunt"
   },
   "dependencies": {

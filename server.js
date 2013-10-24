@@ -11,13 +11,14 @@ var http = require('http')
     , optimist = require('optimist')
     , clone = require('clone');
 
-require('./lib/creative-atrocities/logstyle.js');
-
 var argv = optimist
     .usage('Usage: $0 -p [port]')
     .boolean('h')
     .alias('h', 'help')
     .describe('h', 'Display this help message.')
+    .boolean('color')
+    .describe('color', 'Use ANSI codes in console output.')
+    .default('color', false)
     .alias('p', 'port')
     .default('p', 8080)
     .describe('p', 'Port to use.').argv;
@@ -26,6 +27,8 @@ if (argv.h) {
     optimist.showHelp();
     process.exit();
 }
+
+require('./lib/creative-atrocities/logstyle.js').setup(argv.color);
 
 var webRoot;
 if (fs.existsSync('public/index.html')) {
@@ -53,28 +56,43 @@ var app = connect()
     .use(connect.static(webRoot));
 
 var server = http.createServer(app).listen(argv.p);
-var io = socketio.listen(server);
+var io = socketio.listen(server, {
+    'flash policy port': -1,
+    'log colors': argv.color,
+    'transports': [
+        'websocket'
+        , 'flashsocket'
+        , 'htmlfile'
+        , 'xhr-polling'
+        , 'jsonp-polling'
+    ]
+});
+
+io.set('authorization', function (hs, callback) {
+    var parsed = cookie.parse(hs.headers.cookie);
+    var unsigned = connect.utils.parseSignedCookies(parsed, secret);
+    var unjsoned = connect.utils.parseJSONCookies(unsigned, secret);
+    var session = unjsoned[cookieKey];
+
+    if (session && session.sessionId) {
+        hs.sessionId = session.sessionId;
+        console.log('Authorization successful for session ', hs.sessionId.arg);
+        callback(null, true);
+    } else {
+        console.log('Authorization failure'.warn);
+        callback('Invalid or non-existing session cookie', false);
+    }
+});
+
+io.configure('production', function (){
+    io.enable('browser client minification');  // send minified client
+    io.enable('browser client etag');          // apply etag caching logic based on version number
+    io.enable('browser client gzip');          // gzip the file
+    io.set('log level', 2);                    // reduce logging
+});
 
 var games = {};
 var sessions = {};
-
-io.configure(function (){
-    io.set('authorization', function (hs, callback) {
-        var parsed = cookie.parse(hs.headers.cookie);
-        var unsigned = connect.utils.parseSignedCookies(parsed, secret);
-        var unjsoned = connect.utils.parseJSONCookies(unsigned, secret);
-        var session = unjsoned[cookieKey];
-
-        if (session && session.sessionId) {
-            hs.sessionId = session.sessionId;
-            console.log('Authorization successful for session ', hs.sessionId.arg);
-            callback(null, true);
-        } else {
-            console.log('Authorization failure'.warn);
-            callback('Invalid or non-existing session cookie', false);
-        }
-    });
-});
 
 function terseDecks() {
     var decks = cards.decks;
