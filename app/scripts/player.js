@@ -8,7 +8,11 @@ $(document).on('ready', function() {
     var player;
 
     socket.on('error', function (error) {
+        $('#error-message').text(error);
         console.error('SocketIO issue: ' + error);
+        $.mobile.changePage('#error', {
+            transition: 'pop'
+        });
     });
 
     // LOGIN
