@@ -126,6 +126,50 @@ function shuffleArray(ar) {
     return res;
 }
 
+function sendGameError(game, message) {
+    var gameSocketId = sessions[game.sessionId].socketId;
+    var gameSocket = io.sockets.sockets[gameSocketId];
+    gameSocket.emit('error', message);
+}
+
+function sendPlayerError(player, message) {
+    var playerSocketId = sessions[player.sessionId].socketId;
+    var playerSocket = io.sockets.sockets[playerSocketId];
+    playerSocket.emit('error', message);
+}
+
+function isExpectedGameState(game, expected) {
+    if (game.state === expected) {
+        return true;
+    }
+
+    var gameId = game.gameId;
+
+    console.log(gameId.ctx, 'Wrong game state; expected'.err, expected.arg, 'but is'.err, game.state.arg);
+
+    sendGameError(game, 'Wrong game state; expected ' + expected + ' but is ' + game.state);
+
+    return false;
+}
+
+function isExpectedPlayerState(player, expected) {
+    if (player.state === expected) {
+        return true;
+    }
+
+    var gameId = sessions[player.sessionId].gameId;
+
+    console.log(gameId.ctx, 'Wrong state for player'.err, player.name.arg, '/'.err, player.sessionId.arg,
+            '; expected'.err, expected.arg, 'but is'.err, player.state.arg);
+
+    var game = games[gameId];
+
+    sendPlayerError(player, 'Wrong player state; expected ' + expected + ' but is ' + player.state);
+    sendGameError(game, 'Wrong state for player ' + player.name + '; expected ' + expected + ' but is ' + player.state);
+
+    return false;
+}
+
 function pushControllerState(gameId) {
     var game = games[gameId];
     var socketId = sessions[game.sessionId].socketId;
@@ -186,12 +230,23 @@ io.sockets.on('connection', function (socket) {
 
     // Controller
     socket.on('create game', function(data) {
+        if (sessionType !== 'new') {
+            if (session.gameId) {
+                console.log('Game creation request from'.err, sessionId.arg, '; already involved as'.err, sessionType.arg, 'in game', session.gameId.arg, '(halting)'.err);
+                socket.emit('error', 'Already active as '+sessionType + ' in another game');
+                return;
+            } else {
+                console.log('Game creation request from'.warn, sessionId.arg, '; already involved as'.warn, sessionType.arg, 'but not in any current game (continuing)'.warn);
+            }
+        }
+
         var gameId = generateId();
         sessions[sessionId] = {
             type: 'controller',
             gameId: gameId,
             socketId: socket.id
         };
+        sessionType = 'controller';
 
         var blackCards = [];
         var whiteCards = [];
@@ -270,10 +325,30 @@ io.sockets.on('connection', function (socket) {
         game.state = 'play';
         pushControllerState(gameId);
     };
-    socket.on('start game', startRound);
+
+    socket.on('start game', function() {
+        var gameId = sessions[sessionId].gameId;
+        var game = games[gameId];
+
+        if (!isExpectedGameState(game, 'invite')) {
+            return;
+        }
+        startRound();
+    });
 
     // Player
     socket.on('join game', function(data) {
+        if (sessionType !== 'new') {
+            if (session.gameId) {
+                console.log('Request from'.err, sessionId.arg, 'to join game'.err, data.gameId.arg, '; already involved as'.err,
+                    sessionType.arg, 'in game', session.gameId.arg, '(halting)'.err);
+                socket.emit('error', 'Already active as '+sessionType + ' in another game');
+                return;
+            } else {
+                console.log('Game creation request from'.warn, sessionId.arg, '; already involved as'.warn, sessionType.arg, 'but not in any current game (continuing)'.warn);
+            }
+        }
+
         var gameId = data.gameId;
         console.log(gameId.ctx, 'Player'.info, data.playerName.arg, '/', sessionId.arg,
             'joins the game'.info);
@@ -282,6 +357,7 @@ io.sockets.on('connection', function (socket) {
             gameId: data.gameId,
             socketId: socket.id
         };
+        sessionType = 'player';
 
         var game = games[gameId];
         var whiteCards = game.whiteCards.splice(-10,10);
@@ -304,8 +380,12 @@ io.sockets.on('connection', function (socket) {
         var gameId = sessions[sessionId].gameId;
         var game = games[gameId];
         var player = game.players[sessionId];
-        var pick = +game.activeBlackCard.pick;
 
+        if (!isExpectedPlayerState(player, 'play')) {
+            return;
+        }
+
+        var pick = +game.activeBlackCard.pick;
         if (pick !== cards.length) {
             socket.emit('error', 'Wrong number of cards picked; expected ' + pick +
                 ' but got ' + cards.length);
@@ -367,11 +447,11 @@ io.sockets.on('connection', function (socket) {
         var gameId = sessions[sessionId].gameId;
         var game = games[gameId];
         var player = game.players[sessionId];
-        if (player.state !== 'czar decision') {
-            socket.emit('error', 'Wrong player state; expected czar decision but got ' +
-                player.state);
+
+        if (!isExpectedPlayerState(player, 'czar decision')) {
             return;
         }
+
         var candidate = player.candidates[winningIndex];
         var winner = game.players[candidate.sessionId];
         winner.points++;
