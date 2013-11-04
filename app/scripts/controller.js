@@ -98,7 +98,7 @@ $(document).on('ready', function() {
                 cards.push('<div data-theme="c" class="ui-corner-all ui-content ui-bar-c ui-shadow">' +
                     card.text + '</div>');
             });
-            $('#lastWinningSet').append('<div class="candidate">' + cards.join('') + '</div>');
+            $('#lastWinningSet').html('<div class="candidate">' + cards.join('') + '</div>');
         }
 
         $('#currentBlackCard').html('<div data-theme="a" class="black-card ui-corner-all ui-content ui-bar-a ui-shadow">' + game.activeBlackCard.text + '</div>');
