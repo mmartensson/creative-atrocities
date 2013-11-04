@@ -231,7 +231,7 @@ io.sockets.on('connection', function (socket) {
     // Controller
     socket.on('create game', function(data) {
         if (sessionType !== 'new') {
-            if (session.gameId) {
+            if (session && session.gameId) {
                 console.log('Game creation request from'.err, sessionId.arg, '; already involved as'.err, sessionType.arg, 'in game', session.gameId.arg, '(halting)'.err);
                 socket.emit('error', 'Already active as '+sessionType + ' in another game');
                 return;
@@ -339,7 +339,7 @@ io.sockets.on('connection', function (socket) {
     // Player
     socket.on('join game', function(data) {
         if (sessionType !== 'new') {
-            if (session.gameId) {
+            if (session && session.gameId) {
                 console.log('Request from'.err, sessionId.arg, 'to join game'.err, data.gameId.arg, '; already involved as'.err,
                     sessionType.arg, 'in game', session.gameId.arg, '(halting)'.err);
                 socket.emit('error', 'Already active as '+sessionType + ' in another game');
@@ -411,6 +411,11 @@ io.sockets.on('connection', function (socket) {
         for (var i=0; i<pick; i++) {
             player.whiteCards.push(game.whiteCards.pop());
         }
+
+        // Sorting played cards to match the original list of identifiers
+        playedCards.sort(function(a,b) {
+            return cards.indexOf(a.id) < cards.indexOf(b.id) ? -1 : 1;
+        });
 
         player.playedCards = playedCards;
         player.state = 'wait';
