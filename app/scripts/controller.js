@@ -71,7 +71,6 @@ $(document).on('ready', function() {
     var updateScoreBoard = function() {
         $('#scoreboard-tbl tbody').remove();
 
-
         $.each(game.playerOrder, function(i, p) {
             var player = game.players[p];
             var icon = '&nbsp;';
@@ -85,6 +84,20 @@ $(document).on('ready', function() {
                 '</td><td class="ui-body-c">' + player.name + '</td><td class="ui-body-c">' +
                 player.points + '</td></tr>');
         });
+
+        if (game.lastWinningSet) {
+            var set = game.lastWinningSet;
+            $('#lastWinner').text(set.playerName);
+            var cards = ['<div data-theme="a" class="ui-corner-all ui-content ui-bar-a ui-shadow">' +
+                set.blackCard.text + '</div>'];
+            $.each(set.cards, function(j, card) {
+                cards.push('<div data-theme="c" class="ui-corner-all ui-content ui-bar-c ui-shadow">' +
+                    card.text + '</div>');
+            });
+            $('#lastWinningSet').append('<div class="candidate">' + cards.join('') + '</div>');
+        }
+
+        $('#currentBlackCard').html('<div data-theme="a" class="black-card ui-corner-all ui-content ui-bar-a ui-shadow">' + game.activeBlackCard.text + '</div>');
     };
 
     // Welcome message which is sent to any connecting client before it has chosen a role

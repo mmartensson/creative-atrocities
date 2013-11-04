@@ -43,3 +43,18 @@
 .candidate div:not(:first-child) {
     margin-top: -1em;
 }
+
+#scoreboard-tbl {
+    margin-top: 1em;
+    margin-bottom: 1em;
+}
+
+#scoreboard-cards-tbl th {
+    width: 50%;
+    text-align: center;
+}
+
+#scoreboard-cards-tbl .candidate {
+    margin: 1em auto;
+    float: none;
+}
