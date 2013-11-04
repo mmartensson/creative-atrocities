@@ -455,6 +455,11 @@ io.sockets.on('connection', function (socket) {
         var candidate = player.candidates[winningIndex];
         var winner = game.players[candidate.sessionId];
         winner.points++;
+
+        game.lastWinningSet = clone(candidate);
+        game.lastWinningSet.playerName = winner.name;
+        game.lastWinningSet.blackCard = game.activeBlackCard;
+
         console.log(gameId.ctx, 'Winner is'.info, winner.name.arg,
             'now at'.info, winner.points.arg, 'points'.info);
 
