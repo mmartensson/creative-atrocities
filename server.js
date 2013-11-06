@@ -2,6 +2,9 @@
 
 'use strict';
 
+var COOKIE_KEY = 'atrocities';
+var MIN_PLAYER_COUNT = 3;
+
 var http = require('http')
     , connect = require('connect')
     , cookie = require('cookie')
@@ -41,12 +44,11 @@ if (fs.existsSync('public/index.html')) {
 
 var generateId = socketio.Manager.prototype.generateId;
 var secret = generateId();
-var cookieKey = 'atrocities';
 
 var app = connect()
     .use(connect.logger('dev'))
     .use(connect.cookieParser())
-    .use(connect.cookieSession({ secret: secret, key: cookieKey }))
+    .use(connect.cookieSession({ secret: secret, key: COOKIE_KEY }))
     .use(function (req, res, next) {
         if (!req.session.sessionId) {
             req.session.sessionId = generateId();
@@ -72,7 +74,7 @@ io.set('authorization', function (hs, callback) {
     var parsed = cookie.parse(hs.headers.cookie);
     var unsigned = connect.utils.parseSignedCookies(parsed, secret);
     var unjsoned = connect.utils.parseJSONCookies(unsigned, secret);
-    var session = unjsoned[cookieKey];
+    var session = unjsoned[COOKIE_KEY];
 
     if (session && session.sessionId) {
         hs.sessionId = session.sessionId;
@@ -208,6 +210,34 @@ function pushPlayerState(gameId, sessionId) {
     }
 }
 
+function startDecisionIfNonePlaying(gameId) {
+    var game = games[gameId];
+
+    // Prepare for the Czar decision
+    var remainingPlayers = 0;
+    var candidates = [];
+    game.playerOrder.forEach(function(p) {
+        var state = game.players[p].state;
+        if (state === 'play') {
+            remainingPlayers++;
+        } else if (state === 'wait') {
+            candidates.push({ sessionId: p, cards: game.players[p].playedCards });
+        }
+    });
+
+    // If all cards are played, wake up the Czar 
+    if (remainingPlayers === 0) {
+        game.state = 'decision';
+
+        var czarSessionId = game.playerOrder[game.czarIndex];
+        var czarPlayer = game.players[czarSessionId];
+        czarPlayer.state = 'czar decision';
+        czarPlayer.candidates = shuffleArray(candidates);
+        pushPlayerState(gameId, czarSessionId);
+    }
+    pushControllerState(gameId);
+}
+
 io.sockets.on('connection', function (socket) {
     var sessionId = socket.handshake.sessionId;
     var session = sessions[sessionId];
@@ -333,6 +363,13 @@ io.sockets.on('connection', function (socket) {
         if (!isExpectedGameState(game, 'invite')) {
             return;
         }
+
+        if (game.playerOrder.length < MIN_PLAYER_COUNT) {
+            socket.emit('error', 'Need at least ' + MIN_PLAYER_COUNT +
+                ' players');
+            return;
+        }
+
         startRound();
     });
 
@@ -422,30 +459,7 @@ io.sockets.on('connection', function (socket) {
 
         pushPlayerState(gameId, sessionId);
 
-        // Prepare for the Czar decision
-        var remainingPlayers = 0;
-        var candidates = [];
-        game.playerOrder.forEach(function(p) {
-            var state = game.players[p].state;
-            if (state === 'play') {
-                remainingPlayers++;
-            } else if (state === 'wait') {
-                candidates.push({ sessionId: p, cards: game.players[p].playedCards });
-            }
-        });
-
-        // If all cards are played, wake up the Czar 
-        if (remainingPlayers === 0) {
-            game.state = 'decision';
-
-            var czarSessionId = game.playerOrder[game.czarIndex];
-            var czarPlayer = game.players[czarSessionId];
-            czarPlayer.state = 'czar decision';
-            czarPlayer.candidates = shuffleArray(candidates);
-            pushPlayerState(gameId, czarSessionId);
-        }
-
-        pushControllerState(gameId);
+        startDecisionIfNonePlaying(gameId);
     });
 
     socket.on('decide winner', function(winningIndex) {
@@ -481,12 +495,50 @@ io.sockets.on('connection', function (socket) {
         player.state = 'offline';
         game.players[offlineId] = player;
         delete game.players[sessionId];
+        var activePlayers = 0;
+        for (var i=0; i<game.playerOrder.length; i++) {
+            var p = game.playerOrder[i];
+            if (p === sessionId) {
+                game.playerOrder[i] = offlineId;
+            } else {
+                var s = game.players[p].state;
+                if (s !== 'offline') {
+                    activePlayers++;
+                }
+            }
+        }
 
         // Remove session and push state to ex-player and controller
         delete sessions[sessionId];
         socket.emit('welcome');
-        pushControllerState(gameId);
 
         console.log(gameId.ctx, 'Player'.info, player.name.arg, '/'.info, sessionId.arg, 'has logged out'.info);
+
+        if (activePlayers < MIN_PLAYER_COUNT) {
+            // shutdownGame(gameId);
+            // FIXME: Implement
+        }
+
+        if (game.state === 'invite') {
+            // Will simply update the list of players
+            // waiting for the game to start.
+            pushControllerState(gameId);
+        } else {
+            var czarSessionId = game.playerOrder[game.czarIndex];
+            if (czarSessionId === sessionId) {
+                // If the czar dropped during play, a new round must
+                // be started.
+                startRound();
+            } else if (game.state === 'play') {
+                // If we are not currently deciding a winner,
+                // now might be a good time.
+                startDecisionIfNonePlaying(gameId);
+            } else {
+                // We should not pick the dropout as the winner; making
+                // sure the Czar gets updated state.
+                pushControllerState(gameId);
+                pushPlayerState(gameId, czarSessionId);
+            }
+        }
     });
 });
