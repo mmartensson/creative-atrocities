@@ -153,4 +153,10 @@ $(document).on('ready', function() {
             socket.emit('decide winner', index);
         });
     });
+
+    // LOGOUT
+    // (Logout requested and confirmed)
+    $('#logout-btn').click(function() {
+        socket.emit('logout');
+    });
 });

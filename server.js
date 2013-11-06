@@ -470,4 +470,23 @@ io.sockets.on('connection', function (socket) {
 
         startRound();
     });
+
+    socket.on('logout', function() {
+        var gameId = sessions[sessionId].gameId;
+        var game = games[gameId];
+        var player = game.players[sessionId];
+
+        // Change state and rename sessionId
+        var offlineId = 'offline-'+sessionId+'-'+generateId();
+        player.state = 'offline';
+        game.players[offlineId] = player;
+        delete game.players[sessionId];
+
+        // Remove session and push state to ex-player and controller
+        delete sessions[sessionId];
+        socket.emit('welcome');
+        pushControllerState(gameId);
+
+        console.log(gameId.ctx, 'Player'.info, player.name.arg, '/'.info, sessionId.arg, 'has logged out'.info);
+    });
 });

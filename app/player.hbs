@@ -17,6 +17,7 @@ title: Playing Creative Atrocities
 
 <div data-role="page" id="wait" data-dom-cache="true" data-theme="b">
     <div data-role="header" data-theme="b">
+        <a href="#logout" data-icon="delete" data-iconpos="notext" class="ui-btn-left logout"></a>
         <a href="#" data-icon="star" class="ui-btn-right awesome-points">0</a>
         <h1>Stand by</h1>
     </div> <!-- header -->
@@ -28,6 +29,7 @@ title: Playing Creative Atrocities
 
 <div data-role="page" id="play" data-dom-cache="true" data-theme="b">
     <div data-role="header" data-theme="b">
+        <a href="#logout" data-icon="delete" data-iconpos="notext" class="ui-btn-left logout"></a>
         <a href="#" data-icon="star" class="ui-btn-right awesome-points">0</a>
         <h1>Play</h1>
     </div> <!-- header -->
@@ -48,6 +50,7 @@ title: Playing Creative Atrocities
 
 <div data-role="page" id="czar" data-dom-cache="true" data-theme="b">
     <div data-role="header" data-theme="b">
+        <a href="#logout" data-icon="delete" data-iconpos="notext" class="ui-btn-left logout"></a>
         <a href="#" data-icon="star" class="ui-btn-right awesome-points">0</a>
         <h1>Czar</h1>
     </div> <!-- header -->
@@ -67,6 +70,19 @@ title: Playing Creative Atrocities
         <h2>Something is wrong</h2>
         <p id="error-message"></p>
         <p><a href="#" data-rel="back" data-role="button" data-inline="true" data-icon="back">Go back!</a></p>
+    </div><!-- /content -->
+</div>
+
+<div data-role="page" id="logout">
+    <div data-role="header" data-theme="b">
+        <h1>Logout</h1>
+    </div><!-- /header -->
+
+    <div data-role="content" data-theme="d">
+        <h2>Logging out</h2>
+        <p>Are you sure you want to leave the game?</p>
+        <p><a href="#" data-rel="back" data-role="button" data-inline="true" data-icon="back">Go back!</a>
+           <a href="#" data-role="button" data-inline="true" data-icon="check" id="logout-btn">Leave!</a></p>
     </div><!-- /content -->
 </div>
 
