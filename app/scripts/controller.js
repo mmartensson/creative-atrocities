@@ -82,6 +82,8 @@ $(document).on('ready', function() {
                 icon = '<span class="ui-icon ui-icon-check ready">&nbsp;</span>';
             } else if (player.state === 'czar wait') {
                 icon = '<span class="ui-icon ui-icon-star ready">&nbsp;</span>';
+            } else if (player.state === 'offline') {
+                icon = '<span class="ui-icon ui-icon-minus offline">&nbsp;</span>';
             }
 
             $('#scoreboard-tbl').append('<tr> <td class="ui-body-c">' + icon +
