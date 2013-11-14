@@ -139,14 +139,13 @@ $(document).on('ready', function() {
         var login = u.protocol + '://' + u.host + (0 + u.port === 80 ? '' : (':' + u.port)) + u.directory + 'player.html?g=' + game.gameId;
 
         // Using the icon span to determine if we are still showing the "No players" message (clearing it)
-        if ($('#players span').length === 0) {
-            $('#players > tbody').empty();
-        }
-
-        for (var i=$('#players > tbody > tr').length; i<game.playerOrder.length; i++) {
+        $('#players > tbody').empty();
+        for (var i=0; i<game.playerOrder.length; i++) {
             var sessionId = game.playerOrder[i];
             var player = game.players[sessionId];
-            $('<tr><td class="ui-body-c"><span class="ui-icon ui-icon-check ready">&nbsp;</span></td><td class="ui-body-c">' + player.name + '</td></tr>').appendTo('#players > tbody');
+            var iconCls = player.state === 'offline' ? 'ui-icon ui-icon-minus offline' : 'ui-icon ui-icon-check ready';
+            $('<tr><td class="ui-body-c"><span class="' + iconCls + '">&nbsp;</span></td><td class="ui-body-c">' +
+                player.name + '</td></tr>').appendTo('#players > tbody');
         }
 
         displayLoginURL(login);
