@@ -340,6 +340,11 @@ io.sockets.on('connection', function (socket) {
  
         game.playerOrder.forEach(function(p) {
             var player = game.players[p];
+
+            if (player.state === 'offline') {
+                return;
+            }
+
             player.blackCard = game.activeBlackCard;
             delete player.playedCards;
             delete player.candidates;
@@ -489,6 +494,12 @@ io.sockets.on('connection', function (socket) {
         var gameId = sessions[sessionId].gameId;
         var game = games[gameId];
         var player = game.players[sessionId];
+
+        // Perform some cleanup
+        delete player.playedCards;
+        delete player.candidates;
+        delete player.whiteCards;
+        delete player.blackCard;
 
         // Change state and rename sessionId
         var offlineId = 'offline-'+sessionId+'-'+generateId();
