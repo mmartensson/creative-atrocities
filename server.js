@@ -238,6 +238,25 @@ function startDecisionIfNonePlaying(gameId) {
     pushControllerState(gameId);
 }
 
+function shutdownGame(gameId) {
+    var game = games[gameId];
+
+    console.log(gameId.ctx, 'Sending shutdown messages');
+
+    game.state = 'game over';
+    pushControllerState(gameId);
+
+    game.playerOrder.forEach(function(p) {
+        var player = game.players[p];
+        player.state = 'game over';
+        pushPlayerState(gameId, player.sessionId);
+        delete sessions[p];
+    });
+    delete games[gameId];
+
+    console.log(gameId.ctx, 'Game is fully shutdown');
+}
+
 io.sockets.on('connection', function (socket) {
     var sessionId = socket.handshake.sessionId;
     var session = sessions[sessionId];
@@ -526,8 +545,8 @@ io.sockets.on('connection', function (socket) {
         console.log(gameId.ctx, 'Player'.info, player.name.arg, '/'.info, sessionId.arg, 'has logged out'.info);
 
         if (activePlayers < MIN_PLAYER_COUNT) {
-            // shutdownGame(gameId);
-            // FIXME: Implement
+            shutdownGame(gameId);
+            return;
         }
 
         if (game.state === 'invite') {
@@ -536,7 +555,7 @@ io.sockets.on('connection', function (socket) {
             pushControllerState(gameId);
         } else {
             var czarSessionId = game.playerOrder[game.czarIndex];
-            if (czarSessionId === sessionId) {
+            if (czarSessionId === offlineId) {
                 // If the czar dropped during play, a new round must
                 // be started.
                 startRound();
