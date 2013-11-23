@@ -199,6 +199,10 @@ function pushControllerState(gameId) {
 
 function pushPlayerState(gameId, sessionId) {
     var player = games[gameId].players[sessionId];
+    if (!player || player.state === 'offline') {
+        return;
+    }
+
     var socketId = sessions[sessionId].socketId;
     var socket = io.sockets.sockets[socketId];
 
@@ -411,8 +415,16 @@ io.sockets.on('connection', function (socket) {
         }
 
         var gameId = data.gameId;
+        var game = games[gameId];
+        
+        if (!game) {
+            socket.emit('error', 'That game is not currently in progress');
+            return;
+        }
+
         console.log(gameId.ctx, 'Player'.info, data.playerName.arg, '/', sessionId.arg,
             'joins the game'.info);
+
         sessions[sessionId] = {
             type: 'player',
             gameId: data.gameId,
@@ -420,7 +432,6 @@ io.sockets.on('connection', function (socket) {
         };
         sessionType = 'player';
 
-        var game = games[gameId];
         var whiteCards = game.whiteCards.splice(-10,10);
 
         var player = {
@@ -540,7 +551,7 @@ io.sockets.on('connection', function (socket) {
 
         // Remove session and push state to ex-player and controller
         delete sessions[sessionId];
-        socket.emit('welcome');
+        socket.emit('player state game over', player);
 
         console.log(gameId.ctx, 'Player'.info, player.name.arg, '/'.info, sessionId.arg, 'has logged out'.info);
 
@@ -549,7 +560,7 @@ io.sockets.on('connection', function (socket) {
             return;
         }
 
-        if (game.state === 'invite') {
+        if (game.state === 'tnvite') {
             // Will simply update the list of players
             // waiting for the game to start.
             pushControllerState(gameId);

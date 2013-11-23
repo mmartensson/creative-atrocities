@@ -186,4 +186,16 @@ $(document).on('ready', function() {
             $('#candidates-container').append('<div class="candidate">' + cards.join('') + '</div>');
         });
     });
+
+    socket.on('controller state game over', function (data) {
+        console.log('State game over', data);
+        game = data;
+
+        $.mobile.changePage('#game-over', { transition: 'slideup' });
+    });
+
+    $('#restart-btn').click(function() {
+        socket.emit('start setup');
+        // FIXME: Decks should be part of controller (state=setup) data rather than the welcome message.
+    });
 });

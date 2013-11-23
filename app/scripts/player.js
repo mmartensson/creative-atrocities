@@ -154,6 +154,15 @@ $(document).on('ready', function() {
         });
     });
 
+    // GAME OVER
+    socket.on('player state game over', function (data) {
+        console.log('State game over', data);
+        player = data;
+        updatePlayerScore();
+
+        $.mobile.changePage('#game-over', { transition: 'slideup' });
+    });
+
     // LOGOUT
     // (Logout requested and confirmed)
     $('#logout-btn').click(function() {
