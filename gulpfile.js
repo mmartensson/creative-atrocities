@@ -89,7 +89,7 @@ gulp.task('pages', function() {
 });
 
 gulp.task('lint', function() {
-    gulp.src(['server.js', 'lib/**/*.js'])
+    gulp.src(['server.js', 'lib/**/*.js', 'app/scripts/*.js'])
         .pipe(jshint())
         .pipe(jshint.reporter(stylish))
 });
@@ -104,5 +104,5 @@ gulp.task('default', [ 'lr-server', 'scripts', 'styles', 'images', 'favicon', 'p
     gulp.watch('app/scripts/*.js', ['scripts']);
     gulp.watch('app/styles/*.css', ['styles']);
     gulp.watch('app/**.html', ['pages']);
-    gulp.watch(['server.js', 'lib/**/*.js'], ['lint']);
+    gulp.watch(['server.js', 'lib/**/*.js', 'app/scripts/*.js'], ['lint']);
 })
