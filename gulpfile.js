@@ -104,4 +104,5 @@ gulp.task('default', [ 'lr-server', 'scripts', 'styles', 'images', 'favicon', 'p
     gulp.watch('app/scripts/*.js', ['scripts']);
     gulp.watch('app/styles/*.css', ['styles']);
     gulp.watch('app/**.html', ['pages']);
+    gulp.watch(['server.js', 'lib/**/*.js'], ['lint']);
 })
