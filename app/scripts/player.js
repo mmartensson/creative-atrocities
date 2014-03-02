@@ -1,6 +1,6 @@
 'use strict';
 
-/*global io:false */
+/* global io:false */ /* 'io' is initialized outside of the scope of this file */
 
 $(document).on('ready', function() {
     var socket = io.connect();
