@@ -58,6 +58,12 @@ Idea conceived at #spelbar ([Twitter](https://twitter.com/search?q=%23spelbar),
 [Google+](https://plus.google.com/communities/113740453792529383063)) where we meet every wednesday to
 combine beer with table top games.
 
+Status
+------
+
+Development mostly stalled at the moment. You may want to have a look at [Cards Against Originality](http://www.cardsagainstoriginality.com/) or any of the other apps sharing
+the same basic idea. Better yet, pick up the original [Cards Against Humanity](http://www.cardsagainsthumanity.com/) game.
+
 Screenshots
 -----------
 
